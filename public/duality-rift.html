@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duality Rift</title>
+    <style>
+        body {
+            margin: 0;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        .hud {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 22px;
+            font-weight: bold;
+            color: #fff;
+            z-index: 10;
+        }
+
+        .pause {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            visibility: hidden;
+            z-index: 20;
+        }
+
+        #victory {
+            flex-direction: column;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 16px;
+            border: 2px solid #fff;
+            background: #000;
+            color: #fff;
+            cursor: pointer;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            z-index: 100;
+            border: 1px solid #fff;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="c" width="900" height="600"></canvas>
+    <div id="hud" class="hud"></div>
+    <div id="pause" class="pause">
+        <h1>PAUSED</h1>
+    </div>
+    <div class="pause" id="victory" style="flex-direction:column;">
+        <h1 style="font-size:48px; text-shadow:0 0 15px #ff8, 0 0 25px #f0f;">THE RIFT IS SEALED</h1>
+        <p style="font-size:18px;">You have balanced the equation.</p>
+        <button id="restartBtn">Play Again</button>
+    </div>
+    <div id="controls"
+        style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: white; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; z-index: 100; border: 1px solid #fff;">
+        <h4 style="margin: 0 0 5px 0; padding-bottom: 5px; border-bottom: 1px solid #555;">Controls</h4>
+        <span><strong>&larr; / &rarr;</strong> : Move</span><br>
+        <span><strong>&uarr; / Space</strong> : Jump / Double Jump</span><br>
+        <span><strong>Shift</strong> : Flip Realm</span><br>
+        <span><strong>P / Esc</strong> : Pause</span>
+    </div>
+
+    <script>
+        // =========================================================================
+        // CONFIGURATION & CONSTANTS
+        // =========================================================================
+        const CONFIG = {
+            TIMING: { STEP: 1 / 60 },
+            CANVAS_WIDTH: 900, CANVAS_HEIGHT: 600,
+            REALMS: {
+                LIGHT: 0,
+                SHADOW: 1,
+            },
+            PHYSICS: {
+                // Light ◇: Fast, floaty, precise.
+                light: { gravity: 0.4, speed: 0.7, friction: 0.9, jump: -10, doubleJump: -8 },
+                // Shadow ◆: Heavy, powerful, deliberate.
+                shadow: { gravity: 0.6, speed: 0.5, friction: 0.88, jump: -12, doubleJump: -6 },
+            },
+            FLIP_COOLDOWN: 500, // ms
+            LEVELS: [
+                { targetScore: 2000 },
+                { targetScore: 5000 },
+                { targetScore: 8000, isBoss: true } // Final level is a boss encounter
+            ]
+        };
+        // =========================================================================
+        // GAME ENGINE & MANAGERS
+        // =========================================================================
+        const C = document.getElementById("c"), ctx = C.getContext("2d");
+        const hud = document.getElementById("hud"), pauseScreen = document.getElementById("pause"), victoryScreen = document.getElementById("victory");
+        document.getElementById("restartBtn").onclick = () => game.reset();
+
+        class InputManager {
+            constructor() {
+                this.keys = {};
+                window.addEventListener('keydown', e => this.keys[e.key] = true);
+                window.addEventListener('keyup', e => this.keys[e.key] = false);
+            }
+            isDown(key) { return this.keys[key]; }
+            consume(key) { const down = this.keys[key]; this.keys[key] = false; return down; }
+        }
+
+        // =========================================================================
+        // ENTITY CLASSES
+        // =========================================================================
+        class Player {
+            constructor() {
+                this.w = 26; this.h = 40;
+                this.reset();
+            }
+            reset() {
+                this.x = 200; this.y = 300; this.dx = 0; this.dy = 0;
+                this.onGround = false; this.doubleJump = 1;
+            }
+            update(dt, realm) {
+                const physics = realm === CONFIG.REALMS.LIGHT ? CONFIG.PHYSICS.light : CONFIG.PHYSICS.shadow;
+                // Movement
+                if (game.input.isDown('ArrowLeft')) this.dx -= physics.speed;
+                if (game.input.isDown('ArrowRight')) this.dx += physics.speed;
+                // Jumping
+                if (game.input.consume('ArrowUp') || game.input.consume(' ')) {
+                    if (this.onGround) { this.dy = physics.jump; this.onGround = false; }
+                    else if (this.doubleJump > 0) { this.dy = physics.doubleJump; this.doubleJump = 0; }
+                }
+                // Physics
+                this.dy += physics.gravity;
+                this.dx *= physics.friction;
+                this.x += this.dx; this.y += this.dy;
+            }
+            render(ctx, realm) {
+                ctx.save();
+                ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+                ctx.rotate(this.dx / 30);
+                if (realm === CONFIG.REALMS.SHADOW) { // Shadow ◆: Wispy, chaotic form
+                    ctx.fillStyle = '#f0f'; ctx.shadowColor = '#f0f'; ctx.shadowBlur = 15;
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3 + Date.now() * 0.005;
+                        const r = this.h / 2 + Math.sin(angle * 3) * 5;
+                        ctx.lineTo(Math.cos(angle) * r * 0.7, Math.sin(angle) * r);
+                    }
+                    ctx.closePath(); ctx.fill();
+                } else { // Light ◇: Sharp, crystalline form
+                    ctx.strokeStyle = '#0ff'; ctx.shadowColor = '#0ff'; ctx.shadowBlur = 15;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -this.h / 2); ctx.lineTo(this.w / 2, this.h / 2);
+                    ctx.lineTo(-this.w / 2, this.h / 2); ctx.closePath();
+                    ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        // ... Other entities (Platform, Particle) would be classes here ...
+
+        // =========================================================================
+        // GAME ORCHESTRATOR
+        // =========================================================================
+        class Game {
+            constructor() {
+                this.input = new InputManager();
+                this.player = new Player();
+                this.platforms = [];
+                this.particles = [];
+                this.reset();
+            }
+
+            reset() {
+                this.state = 'START';
+                this.realm = CONFIG.REALMS.LIGHT;
+                this.score = 0;
+                this.frame = 0;
+                this.lastFlip = 0;
+                this.player.reset();
+                this.platforms.length = 0;
+                // Procedural platform generation
+                for (let i = 0; i < 30; i++) this.addPlat(i * 120, 550, 100, 20, i % 2);
+                for (let i = 0; i < 20; i++) {
+                    const realm = i % 2;
+                    this.addPlat(400 + i * 250, realm ? 350 : 250, 120, 18, realm);
+                }
+                this.state = 'PLAYING';
+                pauseScreen.style.visibility = 'hidden';
+                victoryScreen.style.visibility = 'hidden';
+                this.loop();
+            }
+
+            addPlat(x, y, w, h, realm) { this.platforms.push({ x, y, w, h, realm }); }
+
+            flipRealm() {
+                const now = Date.now();
+                if (now - this.lastFlip < CONFIG.FLIP_COOLDOWN) return;
+                this.lastFlip = now;
+                this.realm ^= 1;
+                // Create a powerful rift particle effect
+                for (let i = 0; i < 30; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const speed = 2 + Math.random() * 4;
+                    this.particles.push({
+                        x: this.player.x + this.player.w / 2, y: this.player.y + this.player.h / 2,
+                        dx: Math.cos(angle) * speed, dy: Math.sin(angle) * speed,
+                        life: 40 + Math.random() * 20, clr: this.realm ? "#f0f" : "#0ff"
+                    });
+                }
+            }
+
+            update() {
+                if (this.input.isDown('p') || this.input.isDown('Escape')) { this.state = 'PAUSED'; pauseScreen.style.visibility = 'visible'; }
+                if (this.input.consume('Shift')) this.flipRealm();
+
+                this.frame++;
+                this.player.update(CONFIG.TIMING.STEP, this.realm);
+
+                // Collisions
+                this.player.onGround = false;
+                this.platforms.forEach(plat => {
+                    if (plat.realm !== this.realm || this.player.x + this.player.w < plat.x || this.player.x > plat.x + plat.w || this.player.y + this.player.h < plat.y || this.player.y > plat.y + plat.h) return;
+
+                    if (this.player.dy > 0 && this.player.y + this.player.h - this.player.dy * CONFIG.TIMING.STEP <= plat.y) {
+                        this.player.y = plat.y - this.player.h;
+                        this.player.dy = 0;
+                        this.player.onGround = true;
+                        this.player.doubleJump = 1;
+                    }
+                });
+
+                // Bounds & Scrolling
+                if (this.player.y > C.height + 200) this.reset();
+                const scrollThreshold = C.width / 2;
+                if (this.player.x > scrollThreshold) {
+                    const shift = this.player.x - scrollThreshold;
+                    this.player.x = scrollThreshold;
+                    this.platforms.forEach(p => p.x -= shift);
+                    this.particles.forEach(p => p.x -= shift);
+                    this.score += shift;
+                }
+
+                // Recycle platforms
+                for (let i = this.platforms.length - 1; i >= 0; i--) {
+                    if (this.platforms[i].x + this.platforms[i].w < -200) {
+                        let plat = this.platforms[i];
+                        const lastPlatX = Math.max(...this.platforms.map(p => p.x));
+                        plat.x = lastPlatX + 150 + Math.random() * 150;
+                        plat.y = 200 + Math.random() * 350;
+                    }
+                }
+
+                // Particles
+                this.particles.forEach(pt => { pt.x += pt.dx; pt.y += pt.dy; pt.life--; });
+                this.particles = this.particles.filter(pt => pt.life > 0);
+            }
+
+            draw() {
+                // Background
+                ctx.fillStyle = this.realm === CONFIG.REALMS.SHADOW ? "#120012" : "#001213";
+                ctx.fillRect(0, 0, C.width, C.height);
+                // Parallax Grid
+                ctx.save();
+                const gridOffset = (this.player.x * 0.1) % 40;
+                ctx.translate(-gridOffset, 0);
+                ctx.strokeStyle = this.realm === CONFIG.REALMS.SHADOW ? "#40205055" : "#20505055";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                for (let x = 0; x < C.width + 40; x += 40) { ctx.moveTo(x, 0); ctx.lineTo(x, C.height); }
+                for (let y = 0; y < C.height; y += 40) { ctx.moveTo(0, y); ctx.lineTo(C.width + 40, y); }
+                ctx.stroke();
+                ctx.restore();
+
+                // Platforms
+                this.platforms.forEach(plat => {
+                    const isActive = plat.realm === this.realm;
+                    if (isActive) {
+                        ctx.fillStyle = this.realm === CONFIG.REALMS.SHADOW ? "#aa00aa" : "#00aaaa";
+                        ctx.shadowColor = ctx.fillStyle;
+                        ctx.shadowBlur = 10;
+                    } else {
+                        ctx.fillStyle = "#333";
+                        ctx.shadowBlur = 0;
+                    }
+                    ctx.fillRect(plat.x, plat.y, plat.w, h);
+                });
+                ctx.shadowBlur = 0;
+
+                // Player and Particles
+                this.player.render(ctx, this.realm);
+                this.particles.forEach(pt => {
+                    ctx.fillStyle = pt.clr;
+                    ctx.globalAlpha = pt.life / 60;
+                    ctx.beginPath(); ctx.arc(pt.x, pt.y, pt.life / 5, 0, Math.PI * 2); ctx.fill();
+                });
+                ctx.globalAlpha = 1;
+
+                // HUD
+                hud.textContent = `Realm: ${this.realm ? "◆ Shadow" : "◇ Light"} | Score: ${Math.floor(this.score)}`;
+                hud.style.color = this.realm ? "#f0f" : "#0ff";
+                hud.style.textShadow = `0 0 8px ${this.realm ? "#f0f" : "#0ff"}`;
+            }
+
+            loop() {
+                if (this.state === 'PAUSED') {
+                    if (this.input.consume('p') || this.input.consume('Escape')) this.state = 'PLAYING';
+                } else {
+                    this.update();
+                    this.draw();
+                }
+                if (this.state !== 'VICTORY') requestAnimationFrame(this.loop.bind(this));
+            }
+        }
+
+        const game = new Game();
+    </script>
+</body>
+
+</html>

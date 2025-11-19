@@ -1,0 +1,663 @@
+{
+  "$schema": "./docs/games.manifest.schema.json",
+  "version": "0.3.0-draft",
+  "games": [
+    {
+      "id": "afterglow",
+      "title": "Afterglow",
+      "description": "Only what you light is real.",
+      "entry": "afterglow.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "mouse",
+            "input": "Move",
+            "action": "Aim the light beam"
+          }
+        ],
+        "combat": [
+          {
+            "device": "mouse",
+            "input": "Hold",
+            "action": "Charge a flare"
+          },
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Ignite the charged flare"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Reset after defeat"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "exploration",
+        "puzzle",
+        "mouse"
+      ],
+      "status": "working",
+      "notes": "Escape fixed; polish overlay copy."
+    },
+    {
+      "id": "brick-breaker",
+      "title": "Brick Breaker",
+      "description": "Break neon bricks with power-ups and multi-ball chaos.",
+      "entry": "brick-breaker.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "A / D or Left / Right",
+            "action": "Move paddle"
+          }
+        ],
+        "combat": [
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Launch or add a ball"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart level"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "arcade",
+        "paddle",
+        "keyboard"
+      ],
+      "status": "working",
+      "notes": "Lives + spawn cap; help overlay toggled with H."
+    },
+    {
+      "id": "chromacode",
+      "title": "Chromacode",
+      "description": "Spectrum-shifting platformer with precision jumps.",
+      "entry": "chromacode.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "Left / Right",
+            "action": "Move prism"
+          },
+          {
+            "device": "keyboard",
+            "input": "Up",
+            "action": "Jump"
+          }
+        ],
+        "combat": [
+          {
+            "device": "keyboard",
+            "input": "Space or Enter",
+            "action": "Shift spectrum"
+          },
+          {
+            "device": "mouse",
+            "input": "Click",
+            "action": "Shift spectrum"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart after defeat"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "platformer",
+        "puzzle",
+        "keyboard"
+      ],
+      "status": "broken",
+      "notes": "Auto-fails on start; park for redesign."
+    },
+    {
+      "id": "cosmic-runner",
+      "title": "Cosmic Runner",
+      "description": "Auto-scrolling space gauntlet with combat and boosts.",
+      "entry": "cosmic-runner.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "W / S or Up / Down",
+            "action": "Adjust flight path"
+          },
+          {
+            "device": "keyboard",
+            "input": "Shift",
+            "action": "Engage boost"
+          }
+        ],
+        "combat": [
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Fire blaster"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart run"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "runner",
+        "shooter",
+        "keyboard"
+      ],
+      "status": "working",
+      "notes": "Needs enemy spawns later."
+    },
+    {
+      "id": "duality-rift",
+      "title": "Duality Rift",
+      "description": "Realm-flipping platformer with light and shadow physics.",
+      "entry": "duality-rift.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "A / D or Left / Right",
+            "action": "Move hero"
+          },
+          {
+            "device": "keyboard",
+            "input": "Space or Up",
+            "action": "Jump or double jump"
+          }
+        ],
+        "combat": [
+          {
+            "device": "keyboard",
+            "input": "Shift",
+            "action": "Flip realm"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P or Esc",
+            "action": "Pause or resume"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "platformer",
+        "puzzle",
+        "keyboard"
+      ],
+      "status": "working",
+      "notes": "UI strings include corrupted dash glyphs that need cleanup."
+    },
+    {
+      "id": "gravity-flip",
+      "title": "Gravity Flip",
+      "description": "Runner where you invert gravity to survive.",
+      "entry": "gravity-flip.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "mouse",
+            "input": "Click",
+            "action": "Flip gravity"
+          },
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Flip gravity"
+          }
+        ],
+        "combat": [],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart run"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "runner",
+        "one-button"
+      ],
+      "status": "working",
+      "notes": "Uses localStorage key gravityFlipHighScore; gravity indicator label shows mojibake arrow."
+    },
+    {
+      "id": "impulse",
+      "title": "Impulse",
+      "description": "Zero-gravity puzzle shooter driven by recoil.",
+      "entry": "impulse.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "WASD or Arrow keys",
+            "action": "Apply thrusters"
+          },
+          {
+            "device": "keyboard",
+            "input": "Shift",
+            "action": "Brake"
+          },
+          {
+            "device": "mouse",
+            "input": "Move",
+            "action": "Aim impulses"
+          }
+        ],
+        "combat": [
+          {
+            "device": "mouse",
+            "input": "Click",
+            "action": "Release impulse wave"
+          },
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Release impulse wave"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "H",
+            "action": "Toggle in-game help"
+          },
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart level"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "skill",
+        "physics",
+        "keyboard",
+        "mouse"
+      ],
+      "status": "working",
+      "notes": "Toy sandbox; add survival score later."
+    },
+    {
+      "id": "lunar-tide",
+      "title": "Lunar Tide",
+      "description": "Tidal manipulation puzzler with moon gravity control.",
+      "entry": "lunar-tide.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "mouse",
+            "input": "Click and hold",
+            "action": "Pull the tide"
+          },
+          {
+            "device": "keyboard",
+            "input": "Space (hold)",
+            "action": "Pull the tide"
+          }
+        ],
+        "combat": [],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart level"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "puzzle",
+        "mouse"
+      ],
+      "status": "working",
+      "notes": "Concept good; add obstacles later."
+    },
+    {
+      "id": "magic-mushrooms",
+      "title": "Magic Mushrooms",
+      "description": "Collect magical mushrooms while tripping.",
+      "entry": "magic mushrooms.html",
+      "engine": "unknown",
+      "controls": {
+        "movement": [],
+        "combat": [],
+        "meta": []
+      },
+      "orientation": "unknown",
+      "thumbnail": null,
+      "tags": [
+        "collect",
+        "maze"
+      ],
+      "status": "missing-assets",
+      "notes": "File currently contains merge guidance text; exclude from launcher grid until original assets are restored."
+    },
+    {
+      "id": "origami-rift",
+      "title": "Origami Rift",
+      "description": "Fold reality by toggling paper universes.",
+      "entry": "origami-rift.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "mouse",
+            "input": "Click",
+            "action": "Fold universe"
+          },
+          {
+            "device": "touch",
+            "input": "Tap",
+            "action": "Fold universe"
+          }
+        ],
+        "combat": [],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart level"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "puzzle",
+        "mouse"
+      ],
+      "status": "broken",
+      "notes": "Unclear objective; no observable interactions; culled per owner feedback."
+    },
+    {
+      "id": "pixel-pong",
+      "title": "Pixel Pong",
+      "description": "Retro pong variant with random power-ups.",
+      "entry": "pixel-pong.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "W / S or Up / Down",
+            "action": "Move paddle"
+          }
+        ],
+        "combat": [],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Start or pause"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart match"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "arcade",
+        "sports",
+        "keyboard"
+      ],
+      "status": "working",
+      "notes": "Scoring to 11; fit verified."
+    },
+    {
+      "id": "reality-shift-runner",
+      "title": "Reality Shift Runner",
+      "description": "Dimension-bending runner with gravity rotations.",
+      "entry": "reality-shift-runner.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "A / D or Left / Right",
+            "action": "Move runner"
+          },
+          {
+            "device": "keyboard",
+            "input": "Space or Up",
+            "action": "Jump"
+          }
+        ],
+        "combat": [],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "Esc",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "Z",
+            "action": "Alternate jump"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "runner",
+        "platformer",
+        "keyboard"
+      ],
+      "status": "broken",
+      "notes": "Hidden pending loop clarification (see docs/game-notes)."
+    },
+    {
+      "id": "space-invaders",
+      "title": "Space Invaders",
+      "description": "Defend Earth from multi-stage alien waves.",
+      "entry": "space-invaders.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "A / D or Left / Right",
+            "action": "Strafe cannon"
+          }
+        ],
+        "combat": [
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Fire cannon"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Toggle pause"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart from wave one"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "shooter",
+        "waves",
+        "retro"
+      ],
+      "status": "working",
+      "notes": "Tooltip ammo label shows mojibake; content pass should replace it with ASCII or HTML entities."
+    },
+    {
+      "id": "temporal-twin",
+      "title": "Temporal Twin",
+      "description": "Puzzle platformer with time anchors and boss phases.",
+      "entry": "temporal-twin.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "Left / Right",
+            "action": "Move twin"
+          }
+        ],
+        "combat": [
+          {
+            "device": "keyboard",
+            "input": "Space",
+            "action": "Place temporal anchor"
+          }
+        ],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "P",
+            "action": "Pause or resume"
+          },
+          {
+            "device": "keyboard",
+            "input": "R",
+            "action": "Restart level"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "platformer",
+        "puzzle",
+        "keyboard"
+      ],
+      "status": "broken",
+      "notes": "Hidden pending loop clarification (see docs/game-notes)."
+    },
+    {
+      "id": "vroom",
+      "title": "Vroom",
+      "description": "Lane-switching street racer culminating in a boss duel.",
+      "entry": "Vroom.html",
+      "engine": "canvas-2d",
+      "controls": {
+        "movement": [
+          {
+            "device": "keyboard",
+            "input": "Up / Down",
+            "action": "Accelerate or brake"
+          },
+          {
+            "device": "keyboard",
+            "input": "Left / Right",
+            "action": "Change lanes"
+          }
+        ],
+        "combat": [],
+        "meta": [
+          {
+            "device": "keyboard",
+            "input": "Enter",
+            "action": "Start or restart"
+          }
+        ]
+      },
+      "orientation": "landscape",
+      "thumbnail": null,
+      "tags": [
+        "racing",
+        "keyboard"
+      ],
+      "status": "working",
+      "notes": "3-lane obstacles later."
+    }
+  ]
+}

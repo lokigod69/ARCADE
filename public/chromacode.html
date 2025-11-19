@@ -1,0 +1,1005 @@
+<!-- Chromacode - Refactored with production-ready architecture, entity systems, and scalable level design -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chromacode - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #000000, #1a0a1a, #0a0a1a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid;
+            border-image: conic-gradient(from 0deg, #ff0000, #00ff00, #0000ff, #ff0000) 1;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+            background: #000;
+            animation: rgbCycle 6s linear infinite;
+        }
+
+        @keyframes rgbCycle {
+            0% { 
+                box-shadow: 0 0 30px rgba(255, 0, 0, 0.5), 0 0 60px rgba(255, 0, 0, 0.2);
+                border-image: conic-gradient(from 0deg, #ff0000, #00ff00, #0000ff, #ff0000) 1;
+            }
+            33% { 
+                box-shadow: 0 0 30px rgba(0, 255, 0, 0.5), 0 0 60px rgba(0, 255, 0, 0.2);
+                border-image: conic-gradient(from 120deg, #ff0000, #00ff00, #0000ff, #ff0000) 1;
+            }
+            66% { 
+                box-shadow: 0 0 30px rgba(0, 0, 255, 0.5), 0 0 60px rgba(0, 0, 255, 0.2);
+                border-image: conic-gradient(from 240deg, #ff0000, #00ff00, #0000ff, #ff0000) 1;
+            }
+            100% { 
+                box-shadow: 0 0 30px rgba(255, 0, 0, 0.5), 0 0 60px rgba(255, 0, 0, 0.2);
+                border-image: conic-gradient(from 360deg, #ff0000, #00ff00, #0000ff, #ff0000) 1;
+            }
+        }
+
+        canvas {
+            display: block;
+            background: radial-gradient(circle at center, #0a0a0a, #000000);
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffffff;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .spectrum-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ffffff;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffffff;
+            z-index: 10;
+        }
+
+        .spectrum-bar {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 12px;
+            background: linear-gradient(90deg, #ff0000, #00ff00, #0000ff);
+            border: 2px solid #ffffff;
+            border-radius: 8px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .spectrum-indicator {
+            position: absolute;
+            top: -2px;
+            width: 4px;
+            height: 16px;
+            background: #ffffff;
+            border-radius: 2px;
+            box-shadow: 0 0 10px #ffffff;
+            transition: left 0.2s ease;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0088;
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ffffff;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ffffff;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ffffff;
+            text-align: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #ffffff;
+        }
+
+        .color-indicator {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            font-size: 14px;
+            font-weight: bold;
+            z-index: 10;
+            text-shadow: 0 0 10px;
+        }
+
+        .victory-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 0 30px #ffffff;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 4px solid #ffffff;
+            animation: victoryPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes victoryPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.02); }
+        }
+
+        /* Tooltip styles */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            border: 2px solid #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            z-index: 100;
+            display: none;
+        }
+
+        .tooltip h3 {
+            margin: 0 0 5px 0;
+            font-weight: bold;
+            text-shadow: 0 0 5px #fff;
+        }
+
+        .tooltip ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        .tooltip ul li {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Level: <span id="level">1</span>/3 | Shards: <span id="shards">0</span>/<span id="totalShards">5</span> | Score: <span id="score">0</span></div>
+        </div>
+        <div class="spectrum-info">
+            <div>Speed: <span id="speed">3.0</span></div>
+            <div>Swaps: <span id="swaps">0</span></div>
+        </div>
+        <div class="spectrum-bar">
+            <div class="spectrum-indicator" id="spectrumIndicator"></div>
+        </div>
+        <div class="color-indicator" id="colorIndicator">
+            RED ACTIVE
+        </div>
+        <div id="controls-tooltip" style="position: absolute; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.8); padding: 15px; border-radius: 10px; border: 2px solid #fff; color: #fff; font-family: 'Courier New', monospace; font-size: 14px; text-align: left; z-index: 100;">
+            <h3 style="margin: 0 0 10px 0; font-weight: bold; text-shadow: 0 0 5px #fff;">Controls</h3>
+            <ul style="margin: 0; padding: 0; list-style: none;">
+                <li><strong>Space/Click:</strong> Shift Spectrum</li>
+                <li><strong>P:</strong> Pause</li>
+                <li><strong>R:</strong> Restart</li>
+            </ul>
+        </div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px; font-weight: 900; letter-spacing: 4px;">CHROMACODE</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #ffffff;">
+                Shift the light. Walk the colour that isn\'t there.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                The world is painted in three pure signals—Crimson, Cobalt, Lime.<br>
+                Your white prism can only survive inside one wavelength at a time.<br>
+                Tap to rotate the spectrum and phase through reality!
+            </div>
+            <div style="font-size: 14px;">TAP SPACE or CLICK to begin</div>
+        </div>
+        <div class="level-complete" id="levelComplete">
+            <div>SPECTRUM MASTERY!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Level <span id="completedLevel">1</span> Complete</div>
+            <div style="font-size: 16px; margin-top: 10px;">Bonus: <span id="levelBonus">0</span></div>
+            <div style="font-size: 14px; margin-top: 10px;">Next wavelength in 3 seconds...</div>
+        </div>
+        <div class="victory-screen" id="victoryScreen">
+            <div style="font-size: 48px; margin-bottom: 20px;">SPECTRUM MASTERED!</div>
+            <div style="font-size: 24px; margin-bottom: 15px; color: #00ff00;">
+                You hacked the light itself!
+            </div>
+            <div style="font-size: 18px; margin-bottom: 20px;">
+                Final Score: <span id="victoryScore">0</span>
+            </div>
+            <button onclick="game.resetGame()" style="
+                background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff);
+                border: none;
+                color: #fff;
+                padding: 15px 30px;
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 10px;
+                cursor: pointer;
+                font-family: 'Courier New', monospace;
+            ">PLAY AGAIN</button>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>SPECTRUM COLLAPSED!</div>
+            <div style="font-size: 20px; margin-top: 15px;">Final Score: <span id="finalScore">0</span></div>
+            <div style="font-size: 14px; margin-top: 15px;">Press R to restart</div>
+        </div>
+    </div>
+
+    <script>
+        // ===== PRODUCTION-READY CHROMACODE ARCHITECTURE =====
+        
+        // Configuration constants
+        const CONFIG = {
+            CANVAS_WIDTH: 800,
+            CANVAS_HEIGHT: 600,
+            PLAYER_DEFAULTS: {
+                x: 100, y: 300, width: 20, height: 20,
+                trailSize: 10,
+            },
+            GAME_DEFAULTS: {
+                startSpeed: 3.0,
+                maxSpeed: 6.0,
+                speedIncrement: 0.3,
+                gravity: 0.5,
+                terminalVelocity: 12,
+            },
+            TIMING: {
+                step: 1 / 60, // Use a fixed 60 FPS for physics updates
+                spectrumShiftDebounce: 150, // ms
+                levelCompleteDelay: 3000, // ms
+            },
+            POOLS: {
+                maxParticles: 200,
+            },
+            SPECTRUM: {
+                colors: ['#ff0000', '#00ff00', '#0000ff'],
+                names: ['RED', 'GREEN', 'BLUE'],
+            },
+            SCORE: {
+                shard: 200,
+            },
+            TOTAL_LEVELS: 3
+        };
+
+        // Core utility classes
+        class Vec2 {
+            constructor(x = 0, y = 0) {
+                this.x = x;
+                this.y = y;
+            }
+            
+            add(v) {
+                this.x += v.x;
+                this.y += v.y;
+                return this;
+            }
+            
+            copy() {
+                return new Vec2(this.x, this.y);
+            }
+        }
+
+        class Box {
+            constructor(x, y, w, h) {
+                this.x = x;
+                this.y = y;
+                this.w = w;
+                this.h = h;
+            }
+            
+            intersects(other) {
+                return this.x < other.x + other.w &&
+                       this.x + this.w > other.x &&
+                       this.y < other.y + other.h &&
+                       this.y + this.h > other.y;
+            }
+        }
+
+        // Entity base class
+        class Entity extends Box {
+            constructor(x, y, w, h, type = 'entity') {
+                super(x, y, w, h);
+                this.type = type;
+                this.active = true;
+                this.vel = new Vec2();
+            }
+            
+            update(dt) {
+                if (!this.active) return;
+                
+                // Update position
+                this.x += this.vel.x * dt * 60; // Normalize for 60fps
+                this.y += this.vel.y * dt * 60;
+            }
+            
+            render(ctx) {
+                // Override in subclasses
+            }
+        }
+
+        // Player entity
+        class Player extends Entity {
+            constructor(x, y, width, height) {
+                super(x, y, width, height, 'player');
+                this.dx = 0;
+                this.dy = 0;
+                this.trail = [];
+                this.nextColorPreview = 0;
+            }
+
+            update(dt, game) {
+                // Auto-scroll
+                this.x += game.gameSpeed;
+                
+                // Gravity
+                this.dy += CONFIG.GAME_DEFAULTS.gravity;
+                this.dy = Math.min(this.dy, CONFIG.GAME_DEFAULTS.terminalVelocity);
+                this.y += this.dy;
+
+                // Platform collision
+                let onGround = false;
+                game.platforms.forEach(platform => {
+                    if (platform.isActive(game.currentSpectrum) && this.intersects(platform)) {
+                        // Check for vertical collision from above
+                        if (this.dy > 0 && (this.y + this.h - this.dy) <= platform.y) {
+                             this.y = platform.y - this.h;
+                             this.dy = 0;
+                             onGround = true;
+                        }
+                    }
+                });
+
+                // Trail
+                this.trail.push({ x: this.x + this.w / 2, y: this.y + this.h / 2, color: CONFIG.SPECTRUM.colors[game.currentSpectrum] });
+                if (this.trail.length > CONFIG.PLAYER_DEFAULTS.trailSize) {
+                    this.trail.shift();
+                }
+                
+                // Boundary checks
+                if (this.y > CONFIG.CANVAS_HEIGHT) {
+                    game.setState(GameState.GAME_OVER);
+                }
+                if (this.x > CONFIG.CANVAS_WIDTH - this.w) {
+                    this.x = CONFIG.CANVAS_WIDTH - this.w;
+                }
+                
+                // Update preview
+                if (this.nextColorPreview > 0) {
+                    this.nextColorPreview--;
+                }
+            }
+
+            render(ctx, game) {
+                // Draw trail
+                this.trail.forEach((p, i) => {
+                    const alpha = (i / this.trail.length) * 0.5;
+                    const rgb = p.color.slice(1).match(/.{1,2}/g).map(v => parseInt(v, 16));
+                    ctx.fillStyle = `rgba(${rgb.join(',')}, ${alpha})`;
+                    ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+                });
+
+                // Draw Player Prism
+                ctx.save();
+                ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+                ctx.fillStyle = '#ffffff';
+                ctx.strokeStyle = CONFIG.SPECTRUM.colors[game.currentSpectrum];
+                ctx.lineWidth = 2;
+                ctx.shadowColor = '#ffffff';
+                ctx.shadowBlur = 10;
+                
+                ctx.beginPath();
+                ctx.moveTo(-this.w / 2, this.h / 2);
+                ctx.lineTo(this.w / 2, this.h / 2);
+                ctx.lineTo(0, -this.h / 2);
+                ctx.closePath();
+                ctx.fill();
+                ctx.stroke();
+                
+                // Next color preview
+                if (this.nextColorPreview > 0) {
+                    const nextColor = (game.currentSpectrum + 1) % 3;
+                    ctx.strokeStyle = CONFIG.SPECTRUM.colors[nextColor];
+                    ctx.lineWidth = 1;
+                    ctx.setLineDash([2, 2]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+                
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+            
+            reset() {
+                this.x = CONFIG.PLAYER_DEFAULTS.x;
+                this.y = CONFIG.PLAYER_DEFAULTS.y;
+                this.dx = 0;
+                this.dy = 0;
+                this.trail = [];
+                this.nextColorPreview = 0;
+            }
+        }
+
+        // Platform entity
+        class Platform extends Entity {
+            constructor(x, y, width, height, color) {
+                super(x, y, width, height, 'platform');
+                this.color = color;
+            }
+            
+            isActive(currentSpectrum) {
+                return this.color === currentSpectrum;
+            }
+
+            render(ctx, currentSpectrum) {
+                if (this.isActive(currentSpectrum)) {
+                    ctx.fillStyle = CONFIG.SPECTRUM.colors[this.color];
+                    ctx.shadowColor = CONFIG.SPECTRUM.colors[this.color];
+                    ctx.shadowBlur = 10;
+                } else {
+                    const rgb = CONFIG.SPECTRUM.colors[this.color].slice(1).match(/.{1,2}/g).map(v => parseInt(v, 16));
+                    ctx.fillStyle = `rgba(${rgb.join(',')}, 0.2)`;
+                    ctx.shadowBlur = 0;
+                }
+                ctx.fillRect(this.x, this.y, this.w, this.h);
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        // Spectra Shard entity
+        class SpectraShard extends Entity {
+            constructor(x, y, overlap) {
+                super(x-8, y-8, 16, 16, 'shard'); // Hitbox
+                this.visualX = x;
+                this.visualY = y;
+                this.overlap = overlap;
+                this.collected = false;
+                this.pulse = Math.random() * Math.PI * 2;
+            }
+
+            isActive(currentSpectrum) {
+                return this.overlap.includes(currentSpectrum);
+            }
+
+            update(dt, game) {
+                if (this.collected) return;
+                this.pulse += 0.15;
+                if (this.isActive(game.currentSpectrum) && this.intersects(game.player)) {
+                    this.collected = true;
+                    game.collectShard();
+                }
+            }
+            
+            render(ctx, currentSpectrum) {
+                if (this.collected) return;
+
+                const scale = 1 + Math.sin(this.pulse) * 0.2;
+                ctx.save();
+                ctx.translate(this.visualX, this.visualY);
+                ctx.scale(scale, scale);
+
+                if (this.isActive(currentSpectrum)) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.shadowColor = '#ffffff';
+                    ctx.shadowBlur = 15;
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i / 6) * Math.PI * 2;
+                        ctx.lineTo(Math.cos(angle) * 8, Math.sin(angle) * 8);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = (i / 6) * Math.PI * 2;
+                        ctx.lineTo(Math.cos(angle) * 8, Math.sin(angle) * 8);
+                    }
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+                ctx.restore();
+                ctx.shadowBlur = 0;
+            }
+        }
+        
+        // Split Spike entity
+        class SplitSpike extends Entity {
+            constructor(x, y, width, height, leftColor, rightColor) {
+                super(x, y, width, height, 'splitSpike');
+                this.leftColor = leftColor;
+                this.rightColor = rightColor;
+            }
+            
+            update(dt, game) {
+                const player = game.player;
+                const activeColor = game.currentSpectrum;
+                
+                // Check left half
+                if (this.leftColor === activeColor && player.x < this.x + this.w / 2 && player.x + player.w > this.x && player.y + player.h > this.y) {
+                     game.setState(GameState.GAME_OVER);
+                }
+                // Check right half
+                if (this.rightColor === activeColor && player.x < this.x + this.w && player.x + player.w > this.x + this.w/2 && player.y + player.h > this.y) {
+                     game.setState(GameState.GAME_OVER);
+                }
+            }
+            
+            render(ctx, currentSpectrum) {
+                const leftActive = this.leftColor === currentSpectrum;
+                const rightActive = this.rightColor === currentSpectrum;
+
+                // Left side
+                ctx.fillStyle = leftActive ? CONFIG.SPECTRUM.colors[this.leftColor] : 'rgba(100,100,100,0.3)';
+                ctx.fillRect(this.x, this.y, this.w / 2, this.h);
+                
+                // Right side
+                ctx.fillStyle = rightActive ? CONFIG.SPECTRUM.colors[this.rightColor] : 'rgba(100,100,100,0.3)';
+                ctx.fillRect(this.x + this.w / 2, this.y, this.w / 2, this.h);
+            }
+        }
+
+        // Particle system with memory management
+        class ParticleSystem {
+            constructor(maxParticles = CONFIG.POOLS.maxParticles) {
+                this.particles = [];
+                this.maxParticles = maxParticles;
+            }
+            
+            add(x, y, color, count = 8, type = 'normal') {
+                for (let i = 0; i < count && this.particles.length < this.maxParticles; i++) {
+                    this.particles.push({
+                        x: x,
+                        y: y,
+                        dx: (Math.random() - 0.5) * 8,
+                        dy: (Math.random() - 0.5) * 8,
+                        life: 20,
+                        maxLife: 20,
+                        color: color,
+                        size: Math.random() * 4 + 2,
+                        type: type
+                    });
+                }
+            }
+            
+            update(dt) {
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const particle = this.particles[i];
+                    particle.x += particle.dx;
+                    particle.y += particle.dy;
+                    particle.dx *= 0.98;
+                    particle.dy *= 0.98;
+                    particle.life--;
+                    
+                    if (particle.life <= 0) {
+                        this.particles.splice(i, 1);
+                    }
+                }
+            }
+            
+            render(ctx, currentSpectrum) {
+                this.particles.forEach(particle => {
+                    const alpha = particle.life / particle.maxLife;
+                    const rgb = CONFIG.SPECTRUM.colors[currentSpectrum].slice(1).match(/.{1,2}/g).map(v => parseInt(v, 16));
+                    ctx.fillStyle = `rgba(${rgb.join(',')}, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                    ctx.fill();
+                });
+            }
+            
+            clear() {
+                this.particles.length = 0;
+            }
+        }
+
+        // Game State Machine
+        const GameState = {
+            START_SCREEN: 'START_SCREEN',
+            PLAYING: 'PLAYING',
+            PAUSED: 'PAUSED',
+            LEVEL_COMPLETE: 'LEVEL_COMPLETE',
+            GAME_OVER: 'GAME_OVER',
+            VICTORY: 'VICTORY', // A definitive win state
+        };
+
+        // Level data for data-driven design
+        const LEVELS = [
+            {
+                level: 1,
+                targetShards: 5,
+                platforms: [
+                    { x: 0, y: 550, width: 200, height: 50, color: 0 },
+                    { x: 250, y: 450, width: 150, height: 20, color: 1 },
+                    { x: 450, y: 350, width: 150, height: 20, color: 2 },
+                    { x: 650, y: 250, width: 150, height: 20, color: 0 },
+                ],
+                shards: [
+                    { x: 180, y: 520, overlap: [0, 1] }, { x: 320, y: 420, overlap: [1, 2] },
+                    { x: 520, y: 320, overlap: [2, 0] }, { x: 720, y: 220, overlap: [0, 1, 2] },
+                    { x: 400, y: 500, overlap: [1] },
+                ],
+                hazards: [] // No hazards in level 1
+            },
+            {
+                level: 2,
+                targetShards: 5,
+                platforms: [
+                    { x: 0, y: 550, width: 150, height: 50, color: 0 },
+                    { x: 200, y: 450, width: 100, height: 20, color: 1 },
+                    { x: 350, y: 350, width: 100, height: 20, color: 2 },
+                    { x: 500, y: 450, width: 100, height: 20, color: 0 },
+                    { x: 650, y: 350, width: 150, height: 20, color: 1 },
+                ],
+                shards: [
+                    { x: 120, y: 520, overlap: [0, 2] }, { x: 270, y: 420, overlap: [1, 2] },
+                    { x: 420, y: 320, overlap: [0, 1] }, { x: 570, y: 420, overlap: [2, 0] },
+                    { x: 720, y: 320, overlap: [0, 1, 2] },
+                ],
+                hazards: [
+                    { type: 'SplitSpike', x: 300, y: 530, width: 40, height: 20, leftColor: 0, rightColor: 1 }
+                ]
+            },
+            {
+                 level: 3,
+                 targetShards: 7,
+                 platforms: [
+                    { x: 0, y: 550, width: 100, height: 20, color: 0 }, { x: 150, y: 480, width: 100, height: 20, color: 1 },
+                    { x: 300, y: 410, width: 100, height: 20, color: 2 }, { x: 450, y: 340, width: 100, height: 20, color: 0 },
+                    { x: 600, y: 410, width: 100, height: 20, color: 1 }, { x: 750, y: 480, width: 100, height: 20, color: 2 },
+                    { x: 500, y: 550, width: 200, height: 20, color: 0 },
+                 ],
+                 shards: [
+                     { x: 80, y: 520, overlap: [0] }, { x: 230, y: 450, overlap: [1, 2] },
+                     { x: 380, y: 380, overlap: [0, 2] }, { x: 530, y: 310, overlap: [0, 1] },
+                     { x: 680, y: 380, overlap: [1, 2] }, { x: 700, y: 520, overlap: [0, 1, 2] },
+                     { x: 150, y: 300, overlap: [2] }
+                 ],
+                 hazards: [
+                    { type: 'SplitSpike', x: 250, y: 530, width: 40, height: 20, leftColor: 0, rightColor: 1 },
+                    { type: 'SplitSpike', x: 450, y: 480, width: 40, height: 20, leftColor: 1, rightColor: 2 }
+                 ]
+            }
+        ];
+
+        // UI Manager
+        class UIManager {
+            constructor() {
+                this.level = document.getElementById('level');
+                this.shards = document.getElementById('shards');
+                this.totalShards = document.getElementById('totalShards');
+                this.score = document.getElementById('score');
+                this.speed = document.getElementById('speed');
+                this.swaps = document.getElementById('swaps');
+                this.spectrumIndicator = document.getElementById('spectrumIndicator');
+                this.colorIndicator = document.getElementById('colorIndicator');
+                this.startScreen = document.getElementById('startScreen');
+                this.levelCompleteScreen = document.getElementById('levelComplete');
+                this.gameOverScreen = document.getElementById('gameOver');
+                this.victoryScreen = document.getElementById('victoryScreen');
+            }
+
+            update(game) {
+                this.level.textContent = game.currentLevel;
+                this.shards.textContent = game.shardsCollected;
+                this.totalShards.textContent = game.levelData.targetShards;
+                this.score.textContent = game.score;
+                this.speed.textContent = game.gameSpeed.toFixed(1);
+                this.swaps.textContent = game.swapCount;
+
+                const indicatorPos = (game.currentSpectrum / (CONFIG.SPECTRUM.colors.length - 1)) * (300 - 4);
+                this.spectrumIndicator.style.left = `${indicatorPos}px`;
+                
+                this.colorIndicator.textContent = `${CONFIG.SPECTRUM.names[game.currentSpectrum]} ACTIVE`;
+                this.colorIndicator.style.color = CONFIG.SPECTRUM.colors[game.currentSpectrum];
+                this.colorIndicator.style.textShadow = `0 0 10px ${CONFIG.SPECTRUM.colors[game.currentSpectrum]}`;
+            }
+
+            showScreen(state, game) {
+                this.startScreen.style.display = 'none';
+                this.levelCompleteScreen.style.display = 'none';
+                this.gameOverScreen.style.display = 'none';
+                this.victoryScreen.style.display = 'none';
+
+                switch (state) {
+                    case GameState.START_SCREEN:
+                        this.startScreen.style.display = 'block';
+                        break;
+                    case GameState.LEVEL_COMPLETE:
+                        document.getElementById('completedLevel').textContent = game.currentLevel;
+                        document.getElementById('levelBonus').textContent = 0; // Placeholder
+                        this.levelCompleteScreen.style.display = 'block';
+                        break;
+                    case GameState.GAME_OVER:
+                        document.getElementById('finalScore').textContent = game.score;
+                        this.gameOverScreen.style.display = 'block';
+                        break;
+                    case GameState.VICTORY:
+                        document.getElementById('victoryScore').textContent = game.score;
+                        this.victoryScreen.style.display = 'block';
+                        break;
+                }
+            }
+        }
+
+        // Main Game class
+        class Game {
+            constructor() {
+                this.canvas = document.getElementById('gameCanvas');
+                this.ctx = this.canvas.getContext('2d');
+                this.ui = new UIManager();
+                this.state = GameState.START_SCREEN;
+                
+                // Game entities
+                this.player = new Player(...Object.values(CONFIG.PLAYER_DEFAULTS));
+                this.platforms = [];
+                this.shards = [];
+                this.hazards = [];
+                this.particles = new ParticleSystem();
+                this.levelData = null;
+
+                // Game state
+                this.currentLevel = 1;
+                this.score = 0;
+                this.shardsCollected = 0;
+                this.swapCount = 0;
+                this.gameSpeed = CONFIG.GAME_DEFAULTS.startSpeed;
+                this.lastShiftTime = 0;
+                this.currentSpectrum = 0;
+
+                // Timing for fixed-step loop
+                this.lastTime = 0;
+                this.accumulator = 0;
+                
+                this.setupInput();
+                this.init();
+            }
+            
+            setupInput() {
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                        e.preventDefault();
+                        if (this.state === GameState.START_SCREEN) this.start();
+                        else if (this.state === GameState.PLAYING) this.shiftSpectrum();
+                    }
+                    if (e.key.toLowerCase() === 'p') {
+                        if (this.state === GameState.PLAYING) this.setState(GameState.PAUSED);
+                        else if (this.state === GameState.PAUSED) this.setState(GameState.PLAYING);
+                    }
+                    if (e.key.toLowerCase() === 'r') {
+                        if (this.state === GameState.GAME_OVER || this.state === GameState.VICTORY) {
+                            this.resetGame();
+                        }
+                    }
+                });
+
+                this.canvas.addEventListener('click', () => {
+                    if (this.state === GameState.START_SCREEN) this.start();
+                    else if (this.state === GameState.PLAYING) this.shiftSpectrum();
+                });
+            }
+
+            init() {
+                this.loadLevel(this.currentLevel);
+                this.ui.update(this);
+                this.setState(GameState.START_SCREEN);
+            }
+            
+            setState(newState) {
+                if (this.state === newState) return;
+                this.state = newState;
+                this.ui.showScreen(newState, this);
+
+                if (newState === GameState.LEVEL_COMPLETE) {
+                    setTimeout(() => this.nextLevel(), CONFIG.TIMING.levelCompleteDelay);
+                }
+            }
+            
+            loadLevel(levelNum) {
+                this.levelData = LEVELS.find(l => l.level === levelNum);
+                if (!this.levelData) {
+                    this.setState(GameState.VICTORY); // No more levels!
+                    return;
+                }
+
+                this.platforms = this.levelData.platforms.map(p => new Platform(p.x, p.y, p.width, p.height, p.color));
+                this.shards = this.levelData.shards.map(s => new SpectraShard(s.x, s.y, s.overlap));
+                this.hazards = (this.levelData.hazards || []).map(h => {
+                    if (h.type === 'SplitSpike') {
+                        return new SplitSpike(h.x, h.y, h.width, h.height, h.leftColor, h.rightColor);
+                    }
+                    return null;
+                }).filter(h => h); // Filter out any unknown hazard types
+            }
+            
+            resetGame() {
+                this.currentLevel = 1;
+                this.score = 0;
+                this.gameSpeed = CONFIG.GAME_DEFAULTS.startSpeed;
+                this.startNewLevel();
+                this.setState(GameState.START_SCREEN);
+                this.ui.update(this);
+            }
+
+            start() {
+                this.currentLevel = 1;
+                this.score = 0;
+                this.gameSpeed = CONFIG.GAME_DEFAULTS.startSpeed;
+                this.startNewLevel();
+                this.setState(GameState.PLAYING);
+            }
+
+            startNewLevel() {
+                this.shardsCollected = 0;
+                this.swapCount = 0;
+                this.currentSpectrum = 0;
+                this.player.reset();
+                this.particles.clear();
+                this.loadLevel(this.currentLevel);
+            }
+
+            nextLevel() {
+                if (this.currentLevel >= CONFIG.TOTAL_LEVELS) {
+                    this.setState(GameState.VICTORY);
+                    return;
+                }
+                this.currentLevel++;
+                this.gameSpeed = Math.min(CONFIG.GAME_DEFAULTS.maxSpeed, this.gameSpeed + CONFIG.GAME_DEFAULTS.speedIncrement);
+                this.startNewLevel();
+                this.setState(GameState.PLAYING);
+            }
+
+            shiftSpectrum() {
+                const now = performance.now();
+                if (now - this.lastShiftTime < CONFIG.TIMING.spectrumShiftDebounce) return;
+                this.lastShiftTime = now;
+
+                this.currentSpectrum = (this.currentSpectrum + 1) % CONFIG.SPECTRUM.colors.length;
+                this.swapCount++;
+                this.player.nextColorPreview = 10;
+                
+                // Particle effect for shifting
+                this.particles.add(
+                    this.player.x + this.player.w / 2,
+                    this.player.y + this.player.h / 2,
+                    CONFIG.SPECTRUM.colors[this.currentSpectrum],
+                    15,
+                    'spectrum'
+                );
+            }
+            
+            collectShard() {
+                this.shardsCollected++;
+                this.score += CONFIG.SCORE.shard;
+                if (this.shardsCollected >= this.levelData.targetShards) {
+                    this.setState(GameState.LEVEL_COMPLETE);
+                }
+            }
+
+            update(dt) {
+                if (this.state !== GameState.PLAYING) return;
+                
+                // Update all entities
+                this.player.update(dt, this);
+                this.shards.forEach(s => s.update(dt, this));
+                this.hazards.forEach(h => h.update(dt, this));
+
+                // Update particles
+                this.particles.update(dt);
+                
+                this.ui.update(this);
+            }
+
+            render() {
+                this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)'; // Motion blur effect
+                this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                
+                // Only render game objects if playing
+                if (this.state === GameState.PLAYING || this.state === GameState.PAUSED || this.state === GameState.LEVEL_COMPLETE) {
+                    this.platforms.forEach(p => p.render(this.ctx, this.currentSpectrum));
+                    this.shards.forEach(s => s.render(this.ctx, this.currentSpectrum));
+                    this.hazards.forEach(h => h.render(this.ctx, this.currentSpectrum));
+                    this.player.render(this.ctx, this);
+                    this.particles.render(this.ctx, this.currentSpectrum);
+                }
+
+                if (this.state === GameState.PAUSED) {
+                    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+                    this.ctx.fillStyle = '#ffffff';
+                    this.ctx.font = '48px Courier New';
+                    this.ctx.textAlign = 'center';
+                    this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+                }
+            }
+
+            loop(currentTime) {
+                if (!this.lastTime) {
+                    this.lastTime = currentTime;
+                }
+                const deltaTime = (currentTime - this.lastTime) / 1000;
+                this.lastTime = currentTime;
+                this.accumulator += deltaTime;
+
+                while (this.accumulator >= CONFIG.TIMING.step) {
+                    this.update(CONFIG.TIMING.step);
+                    this.accumulator -= CONFIG.TIMING.step;
+                }
+
+                this.render();
+                requestAnimationFrame(this.loop.bind(this));
+            }
+        }
+
+        // Initialize and start the game
+        const game = new Game();
+        game.loop(0);
+    </script>
+</body>
+</html>

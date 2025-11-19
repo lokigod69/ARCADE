@@ -1,0 +1,834 @@
+<!-- Temporal Twin - Refactored with production-ready architecture, entity systems, and scalable level design -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Temporal Twin - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #1a0d3d, #2d1b69, #0f051f);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid;
+            border-image: linear-gradient(45deg, #6a4c93, #ffd700) 1;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(106, 76, 147, 0.4);
+            background: #000;
+            animation: borderFlicker 3s ease-in-out infinite alternate;
+        }
+
+        @keyframes borderFlicker {
+            0% { box-shadow: 0 0 30px rgba(106, 76, 147, 0.4); }
+            100% { box-shadow: 0 0 40px rgba(255, 215, 0, 0.3); }
+        }
+
+        canvas {
+            display: block;
+            background: radial-gradient(circle at center, #1a0d3d, #0a0520);
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffd700, 2px 2px 0px rgba(255, 215, 0, 0.3);
+            z-index: 10;
+            text-align: center;
+        }
+
+        .level-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #6a4c93;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #6a4c93;
+            z-index: 10;
+        }
+
+        .timer-bar {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #ffd700;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0088, #ffd700);
+            transition: width 0.1s linear;
+            box-shadow: 0 0 10px #ffd700;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0088;
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffd700;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ffd700;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #6a4c93;
+            text-align: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #6a4c93;
+        }
+
+        .anchor-indicator {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #00d2ff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00d2ff;
+            z-index: 10;
+        }
+
+        #bossUI {
+            display: none;
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ff0088;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ff0088;
+            z-index: 10;
+            text-align: right;
+        }
+
+        .boss-health-container {
+            width: 100px;
+            height: 10px;
+            background: rgba(255, 0, 136, 0.3);
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 5px;
+        }
+
+        .boss-health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0088, #ffd700);
+            transition: width 0.1s linear;
+        }
+
+        .boss-phase {
+            text-shadow: 0 0 10px #ffd700;
+        }
+
+        /* Tooltip styles */
+        #controls-tooltip {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #6a4c93;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-align: left;
+            z-index: 100;
+        }
+
+        #controls-tooltip h3 {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+            text-shadow: 0 0 5px #ffd700;
+        }
+
+        #controls-tooltip ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        #controls-tooltip li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Level: <span id="level">1</span> | Crystals: <span id="crystals">0</span>/<span id="totalCrystals">3</span> | Score: <span id="score">0</span></div>
+        </div>
+        <div class="level-info">
+            <div>Clones: <span id="cloneCount">0</span></div>
+            <div>Anchors: <span id="anchorCount">0</span>/3</div>
+        </div>
+        <div class="timer-bar">
+            <div class="timer-fill" id="timerFill"></div>
+        </div>
+        <div id="bossUI" style="display: none;">
+            <div class="boss-health-container">
+                <div id="bossHealthFill" class="boss-health-fill"></div>
+            </div>
+            <div id="bossPhase" class="boss-phase"></div>
+        </div>
+        <div class="anchor-indicator" id="anchorIndicator">
+            TAP SPACE to drop anchor
+        </div>
+        <div id="controls-tooltip" style="position: absolute; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.8); padding: 15px; border-radius: 10px; border: 2px solid #6a4c93; color: #ffffff; font-family: 'Courier New', monospace; font-size: 14px; text-align: left; z-index: 100;">
+            <h3 style="margin: 0 0 10px 0; font-weight: bold; text-shadow: 0 0 5px #ffd700;">Controls</h3>
+            <ul style="margin: 0; padding: 0; list-style: none;">
+                <li><strong>Arrows:</strong> Move</li>
+                <li><strong>Space:</strong> Temporal Anchor</li>
+                <li><strong>P:</strong> Pause</li>
+                <li><strong>R:</strong> Restart</li>
+            </ul>
+        </div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px; font-weight: 100; letter-spacing: 3px;">TEMPORAL TWIN</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #ffd700;">
+                Your greatest ally is your past self.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                Drop time-anchors to create clones of yourself.<br>
+                Work together to collect all crystals before time runs out!
+            </div>
+            <div style="font-size: 14px;">SPACE to start</div>
+        </div>
+        <div class="level-complete" id="levelComplete">
+            <div>TEMPORAL HARMONY!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Level <span id="completedLevel">1</span> Complete</div>
+            <div style="font-size: 16px; margin-top: 10px;">Bonus: <span id="levelBonus">0</span></div>
+            <div style="font-size: 14px; margin-top: 10px;">Next level in 3 seconds...</div>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>TIME COLLAPSED!</div>
+            <div style="font-size: 20px; margin-top: 15px;">Final Score: <span id="finalScore">0</span></div>
+            <div style="font-size: 14px; margin-top: 15px;">Press R to restart</div>
+        </div>
+        <div class="level-complete" id="finalVictoryScreen" style="display: none;">
+            <h1>PARADOX CONTAINED</h1>
+            <p>The timeline is stable. Your echos fade into eternity.</p>
+            <p class="next-level">You are the master of time.</p>
+        </div>
+    </div>
+
+    <script>
+// =========================================================================
+// CONFIGURATION & CONSTANTS
+// =========================================================================
+const CONFIG = {
+    TIMING: {
+        STEP: 1 / 60,
+        LEVEL_COMPLETE_DELAY: 3000,
+    },
+    PLAYER: {
+        speed: 250,
+        size: 20,
+        trailSize: 12,
+    },
+    CLONE: {
+        trailSize: 8,
+    },
+    ANCHOR: {
+        max: 3,
+        recordTime: 5000, // ms
+        lifetime: 5000, // ms, time until clone is spawned
+    },
+    SCORE: {
+        crystal: 100,
+        paradox: 1500,
+    },
+    BOSS: {
+        health: 100,
+        phases: [
+            { healthThreshold: 66, nodes: 1, beamSpeed: 300, beamDelay: 1500 },
+            { healthThreshold: 33, nodes: 2, beamSpeed: 400, beamDelay: 1200 },
+            { healthThreshold: 0, nodes: 2, beamSpeed: 450, beamDelay: 1000, spawnsDistortions: true },
+        ],
+        distortionSpeed: 200,
+    },
+    POOLS: {
+        maxParticles: 300,
+    },
+};
+
+// =========================================================================
+// LEVEL DATA
+// =========================================================================
+const LEVELS = [
+    {
+        level: 1, time: 45, targetCrystals: 3, maxAnchors: 1,
+        entities: [
+            { type: 'Crystal', x: 400, y: 200 },
+            { type: 'Crystal', x: 200, y: 400 },
+            { type: 'Crystal', x: 600, y: 400 },
+        ]
+    },
+    {
+        level: 2, time: 60, targetCrystals: 5, maxAnchors: 2,
+        entities: [
+            { type: 'Crystal', x: 100, y: 150 }, { type: 'Crystal', x: 700, y: 150 },
+            { type: 'Crystal', x: 400, y: 300 },
+            { type: 'Crystal', x: 250, y: 450 }, { type: 'Crystal', x: 550, y: 450 },
+            { type: 'Wall', x: 350, y: 200, w: 100, h: 200 },
+        ]
+    },
+    {
+        level: 3, isBoss: true, time: Infinity, targetCrystals: 0, maxAnchors: 3,
+        entities: []
+    }
+];
+
+// =========================================================================
+// GAME STATES (Finite State Machine)
+// =========================================================================
+const GameState = {
+    START_SCREEN: 'START_SCREEN', PLAYING: 'PLAYING', PAUSED: 'PAUSED',
+    LEVEL_COMPLETE: 'LEVEL_COMPLETE', GAME_OVER: 'GAME_OVER', VICTORY: 'VICTORY',
+    BOSS_BATTLE: 'BOSS_BATTLE',
+};
+
+// =========================================================================
+// UI MANAGER
+// =========================================================================
+class UIManager {
+    constructor() {
+        this.level = document.getElementById('level');
+        this.crystals = document.getElementById('crystals');
+        this.totalCrystals = document.getElementById('totalCrystals');
+        this.score = document.getElementById('score');
+        this.cloneCount = document.getElementById('cloneCount');
+        this.anchorCount = document.getElementById('anchorCount');
+        this.timerFill = document.getElementById('timerFill');
+        this.startScreen = document.getElementById('startScreen');
+        this.levelCompleteScreen = document.getElementById('levelComplete');
+        this.gameOverScreen = document.getElementById('gameOver');
+        this.finalVictoryScreen = document.getElementById('finalVictoryScreen');
+        this.completedLevel = document.getElementById('completedLevel');
+        this.finalScore = document.getElementById('finalScore');
+        this.bossUI = document.getElementById('bossUI');
+        this.bossHealthFill = document.getElementById('bossHealthFill');
+        this.bossPhase = document.getElementById('bossPhase');
+    }
+
+    update(game) {
+        this.level.textContent = game.levelData.isBoss ? "FINALE" : game.currentLevel;
+        this.crystals.textContent = game.crystalsCollected;
+        this.totalCrystals.textContent = game.levelData.targetCrystals;
+        this.score.textContent = game.score;
+        this.cloneCount.textContent = game.entities.clones.length;
+        this.anchorCount.textContent = `${game.entities.anchors.length}/${game.maxAnchors}`;
+        this.timerFill.style.width = `${(game.levelTimer / game.maxLevelTimer) * 100}%`;
+
+        if (game.state === GameState.BOSS_BATTLE && game.boss) {
+            this.bossUI.style.display = 'block';
+            this.bossHealthFill.style.width = `${game.boss.health}%`;
+            this.bossPhase.textContent = `Phase ${game.boss.phase + 1}`;
+        } else {
+            this.bossUI.style.display = 'none';
+        }
+    }
+
+    showScreen(state, game) {
+        [this.startScreen, this.levelCompleteScreen, this.gameOverScreen, this.finalVictoryScreen].forEach(s => s.style.display = 'none');
+        switch (state) {
+            case GameState.START_SCREEN: this.startScreen.style.display = 'block'; break;
+            case GameState.LEVEL_COMPLETE: this.completedLevel.textContent = game.currentLevel; this.levelCompleteScreen.style.display = 'block'; break;
+            case GameState.GAME_OVER: this.finalScore.textContent = game.score; this.gameOverScreen.style.display = 'block'; break;
+            case GameState.VICTORY: this.finalVictoryScreen.style.display = 'block'; break;
+        }
+    }
+}
+
+// =========================================================================
+// ENTITY CLASSES
+// =========================================================================
+class Entity {
+    constructor(x, y) { this.x = x; this.y = y; this.toRemove = false; }
+    update(dt, game) {}
+    render(ctx, game) {}
+}
+
+class PhysicsEntity extends Entity {
+    constructor(x, y, w, h) {
+        super(x, y); this.w = w; this.h = h; this.vel = { x: 0, y: 0 };
+    }
+    getBounds() { return { x: this.x, y: this.y, w: this.w, h: this.h }; }
+}
+
+class Player extends PhysicsEntity {
+    constructor(x, y) {
+        super(x, y, CONFIG.PLAYER.size, CONFIG.PLAYER.size);
+        this.trail = [];
+    }
+    update(dt, game) {
+        this.vel.x = 0; this.vel.y = 0;
+        if (game.input.left) this.vel.x -= CONFIG.PLAYER.speed;
+        if (game.input.right) this.vel.x += CONFIG.PLAYER.speed;
+        if (game.input.up) this.vel.y -= CONFIG.PLAYER.speed;
+        if (game.input.down) this.vel.y += CONFIG.PLAYER.speed;
+
+        this.x += this.vel.x * dt;
+        this.y += this.vel.y * dt;
+
+        this.x = Math.max(0, Math.min(game.canvas.width - this.w, this.x));
+        this.y = Math.max(0, Math.min(game.canvas.height - this.h, this.y));
+
+        this.trail.push({ x: this.x + this.w / 2, y: this.y + this.h / 2 });
+        if (this.trail.length > CONFIG.PLAYER.trailSize) this.trail.shift();
+    }
+    render(ctx) {
+        this.trail.forEach((p, i) => {
+            ctx.fillStyle = `rgba(255, 215, 0, ${i / this.trail.length * 0.5})`;
+            ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+        });
+        ctx.fillStyle = '#ffd700'; ctx.shadowColor = '#ffd700'; ctx.shadowBlur = 15;
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.shadowBlur = 0;
+    }
+}
+
+class Clone extends Player {
+    constructor(x, y, recording) {
+        super(x, y);
+        this.recording = recording; this.recordIndex = 0;
+        this.trail = []; this.maxTrail = CONFIG.CLONE.trailSize;
+    }
+    update(dt, game) {
+        if (this.recordIndex < this.recording.length) {
+            const state = this.recording[this.recordIndex++];
+            this.x = state.x; this.y = state.y;
+        } else {
+            this.toRemove = true;
+        }
+        this.trail.push({ x: this.x + this.w / 2, y: this.y + this.h / 2 });
+        if (this.trail.length > this.maxTrail) this.trail.shift();
+    }
+    render(ctx) {
+        this.trail.forEach((p, i) => {
+            ctx.fillStyle = `rgba(0, 210, 255, ${i / this.trail.length * 0.4})`;
+            ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+        });
+        ctx.fillStyle = '#00d2ff'; ctx.shadowColor = '#00d2ff'; ctx.shadowBlur = 12;
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+        ctx.shadowBlur = 0;
+    }
+}
+
+class Crystal extends Entity {
+    constructor(x, y) { super(x, y); this.pulse = Math.random() * Math.PI * 2; }
+    update(dt) { this.pulse += 5 * dt; }
+    render(ctx) {
+        const size = 10 + Math.sin(this.pulse) * 3;
+        ctx.fillStyle = '#6a4c93'; ctx.shadowColor = '#6a4c93'; ctx.shadowBlur = 15;
+        ctx.beginPath(); ctx.arc(this.x, this.y, size, 0, 2 * Math.PI); ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
+class TimeAnchor extends Entity {
+    constructor(x, y, recording) {
+        super(x, y);
+        this.recording = recording;
+        this.lifetime = CONFIG.ANCHOR.lifetime;
+    }
+    update(dt, game) {
+        this.lifetime -= dt * 1000;
+        if (this.lifetime <= 0) {
+            game.spawnClone(this);
+            this.toRemove = true;
+        }
+    }
+    render(ctx) {
+        const progress = 1 - (this.lifetime / CONFIG.ANCHOR.lifetime);
+        ctx.strokeStyle = `rgba(0, 210, 255, ${1 - progress})`;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); ctx.arc(this.x, this.y, 20 * progress, 0, 2 * Math.PI); ctx.stroke();
+    }
+}
+
+// ... Boss-related entities ...
+class ParadoxEngine extends Entity {
+    constructor(x, y) {
+        super(x, y);
+        this.health = CONFIG.BOSS.health;
+        this.phase = 0;
+        this.attackTimer = 3000; // ms
+    }
+    update(dt, game) {
+        this.attackTimer -= dt * 1000;
+        if (this.attackTimer <= 0) {
+            this.attack(game);
+        }
+        const currentPhase = CONFIG.BOSS.phases[this.phase];
+        if (this.health <= currentPhase.healthThreshold && this.phase < CONFIG.BOSS.phases.length - 1) {
+            this.phase++;
+        }
+    }
+    attack(game) {
+        const phaseInfo = CONFIG.BOSS.phases[this.phase];
+        this.attackTimer = 5000 - this.phase * 1000;
+        for (let i = 0; i < phaseInfo.nodes; i++) {
+            const x = Math.random() * (game.canvas.width - 100) + 50;
+            const y = Math.random() * (game.canvas.height - 100) + 50;
+            game.addEntity('nodes', new EchoNode(x, y, phaseInfo.beamDelay));
+        }
+        if (phaseInfo.spawnsDistortions) {
+            game.addEntity('distortions', new TemporalDistortion(this.x, this.y, game.player));
+        }
+    }
+    render(ctx) {
+        const size = 80 + Math.sin(Date.now() / 500) * 10;
+        const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, size);
+        gradient.addColorStop(0, '#ff0088');
+        gradient.addColorStop(1, '#6a4c93');
+        ctx.fillStyle = gradient;
+        ctx.beginPath(); ctx.arc(this.x, this.y, size, 0, 2 * Math.PI); ctx.fill();
+    }
+    takeDamage(amount, game) {
+        this.health -= amount;
+        if (this.health <= 0) {
+            this.health = 0;
+            game.setState(GameState.VICTORY);
+        }
+    }
+}
+
+class EchoNode extends Entity {
+    constructor(x, y, lifetime) {
+        super(x, y);
+        this.lifetime = lifetime;
+        this.activated = false;
+    }
+    update(dt, game) {
+        this.lifetime -= dt * 1000;
+        if (this.lifetime <= 0 && !this.activated) {
+            this.toRemove = true;
+        }
+    }
+    render(ctx) {
+        const pulse = Math.abs(Math.sin(Date.now() / 200));
+        ctx.strokeStyle = this.activated ? '#ffd700' : '#00d2ff';
+        ctx.lineWidth = 2 + pulse * 2;
+        ctx.beginPath(); ctx.arc(this.x, this.y, 25, 0, 2 * Math.PI); ctx.stroke();
+    }
+    activate(game) {
+        if (this.activated) return;
+        this.activated = true;
+        this.toRemove = true;
+        const phaseInfo = CONFIG.BOSS.phases[game.boss.phase];
+        game.addEntity('beams', new ChronalBeam(game.boss.x, game.boss.y, this.x, this.y, phaseInfo.beamSpeed));
+    }
+}
+
+class ChronalBeam extends Entity {
+    constructor(startX, startY, endX, endY, speed) {
+        super(startX, startY);
+        this.endX = endX; this.endY = endY;
+        const dx = endX - startX, dy = endY - startY;
+        const dist = Math.hypot(dx, dy);
+        this.vel = { x: (dx / dist) * speed, y: (dy / dist) * speed };
+        this.lifetime = (dist / speed) * 1000;
+    }
+    update(dt, game) {
+        this.x += this.vel.x * dt;
+        this.y += this.vel.y * dt;
+        this.lifetime -= dt * 1000;
+        if (this.lifetime <= 0) this.toRemove = true;
+    }
+    render(ctx) {
+        ctx.strokeStyle = '#ff0088'; ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.x - this.vel.x * 0.1, this.y - this.vel.y * 0.1); ctx.stroke();
+    }
+}
+
+class TemporalDistortion extends PhysicsEntity {
+    constructor(x, y, target) {
+        super(x, y, 20, 20);
+        this.target = target;
+    }
+    update(dt, game) {
+        const dx = this.target.x - this.x, dy = this.target.y - this.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist > 1) {
+            this.vel.x = (dx / dist) * CONFIG.BOSS.distortionSpeed;
+            this.vel.y = (dy / dist) * CONFIG.BOSS.distortionSpeed;
+        } else {
+            this.vel = { x: 0, y: 0 };
+        }
+        this.x += this.vel.x * dt;
+        this.y += this.vel.y * dt;
+    }
+    render(ctx) {
+        ctx.fillStyle = 'rgba(255, 0, 136, 0.5)';
+        ctx.fillRect(this.x, this.y, this.w, this.h);
+    }
+}
+
+// =========================================================================
+// GAME ORCHESTRATOR
+// =========================================================================
+class Game {
+    constructor(canvas) {
+        this.canvas = canvas; this.ctx = canvas.getContext('2d');
+        this.ui = new UIManager();
+        this.input = { left: false, right: false, up: false, down: false, anchor: false };
+        this.init();
+    }
+
+    init() {
+        this.state = GameState.START_SCREEN;
+        this.currentLevel = 1; this.score = 0;
+        this.player = new Player(this.canvas.width / 2, this.canvas.height / 2);
+        this.entities = { crystals: [], walls: [], anchors: [], clones: [], nodes: [], beams: [], distortions: [] };
+        this.boss = null;
+        this.playerRecording = [];
+        this.lastTime = 0; this.accumulator = 0;
+    }
+
+    setState(state) { this.state = state; this.ui.showScreen(state, this); }
+
+    loadLevel(levelNum) {
+        this.levelData = LEVELS.find(l => l.level === levelNum);
+        if (!this.levelData) { this.setState(GameState.VICTORY); return; }
+
+        this.entities = { crystals: [], walls: [], anchors: [], clones: [], nodes: [], beams: [], distortions: [] };
+        this.player.x = this.canvas.width / 2; this.player.y = this.canvas.height - 50;
+        this.playerRecording = [];
+        this.crystalsCollected = 0;
+        this.maxAnchors = this.levelData.maxAnchors;
+        this.levelTimer = this.levelData.time; this.maxLevelTimer = this.levelData.time;
+
+        this.levelData.entities.forEach(e => {
+            if (e.type === 'Crystal') this.addEntity('crystals', new Crystal(e.x, e.y));
+        });
+
+        if (this.levelData.isBoss) {
+            this.boss = new ParadoxEngine(this.canvas.width / 2, 150);
+            this.setState(GameState.BOSS_BATTLE);
+        } else {
+            this.setState(GameState.PLAYING);
+        }
+    }
+
+    start() { this.currentLevel = 1; this.score = 0; this.loadLevel(1); }
+    nextLevel() { this.currentLevel++; this.loadLevel(this.currentLevel); }
+    reset() { this.init(); this.ui.update(this); this.setState(GameState.START_SCREEN); }
+
+    addEntity(type, entity) { this.entities[type].push(entity); }
+
+    dropAnchor() {
+        if (this.state !== GameState.PLAYING && this.state !== GameState.BOSS_BATTLE) return;
+        if (this.entities.anchors.length >= this.maxAnchors) return;
+
+        const anchorX = this.player.x, anchorY = this.player.y;
+        let activatedNode = false;
+        if (this.state === GameState.BOSS_BATTLE) {
+            this.entities.nodes.forEach(node => {
+                if (Math.hypot(anchorX - node.x, anchorY - node.y) < 30) {
+                    node.activate(this);
+                    activatedNode = true;
+                }
+            });
+        }
+
+        this.addEntity('anchors', new TimeAnchor(anchorX, anchorY, [...this.playerRecording]));
+        this.playerRecording = [];
+    }
+
+    spawnClone(anchor) {
+        this.addEntity('clones', new Clone(anchor.x, anchor.y, anchor.recording));
+    }
+
+    handleCollisions() {
+        const allColliders = [this.player, ...this.entities.clones];
+        allColliders.forEach(p => {
+            this.entities.crystals.forEach(c => {
+                if (!c.toRemove && Math.hypot(p.x - c.x, p.y - c.y) < 20) {
+                    c.toRemove = true;
+                    this.crystalsCollected++;
+                    this.score += CONFIG.SCORE.crystal;
+                }
+            });
+        });
+
+        if (this.state === GameState.BOSS_BATTLE) {
+            this.entities.beams.forEach(beam => {
+                if (Math.hypot(this.player.x - beam.x, this.player.y - beam.y) < 15) {
+                    this.setState(GameState.GAME_OVER);
+                }
+                this.entities.clones.forEach(clone => {
+                    if (Math.hypot(clone.x - beam.x, clone.y - beam.y) < 15) {
+                        beam.toRemove = true;
+                        clone.toRemove = true;
+                        this.boss.takeDamage(10, this);
+                        this.score += CONFIG.SCORE.paradox;
+                    }
+                });
+            });
+            this.entities.distortions.forEach(d => {
+                if (Math.hypot(this.player.x - d.x, this.player.y - d.y) < 20) {
+                    this.setState(GameState.GAME_OVER);
+                }
+            });
+        }
+    }
+
+    update(dt) {
+        const state = this.state;
+        if (state !== GameState.PLAYING && state !== GameState.BOSS_BATTLE) return;
+
+        this.player.update(dt, this);
+        this.playerRecording.push({ x: this.player.x, y: this.player.y });
+        if (this.playerRecording.length > CONFIG.ANCHOR.recordTime / (1000 * dt)) {
+            this.playerRecording.shift();
+        }
+
+        if (this.boss) this.boss.update(dt, this);
+
+        for (const type in this.entities) {
+            this.entities[type].forEach(e => e.update(dt, this));
+            this.entities[type] = this.entities[type].filter(e => !e.toRemove);
+        }
+
+        this.handleCollisions();
+
+        if (state === GameState.PLAYING) {
+            this.levelTimer -= dt;
+            if (this.levelTimer <= 0) { this.setState(GameState.GAME_OVER); return; }
+            if (this.crystalsCollected >= this.levelData.targetCrystals) {
+                this.setState(GameState.LEVEL_COMPLETE);
+                setTimeout(() => this.nextLevel(), CONFIG.TIMING.LEVEL_COMPLETE_DELAY);
+            }
+        }
+
+        this.ui.update(this);
+    }
+
+    render() {
+        this.ctx.fillStyle = '#1a0d3d';
+        this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        if (this.boss) this.boss.render(this.ctx);
+        for (const type in this.entities) {
+            this.entities[type].forEach(e => e.render(this.ctx));
+        }
+        this.player.render(this.ctx);
+
+        if (this.state === GameState.PAUSED) {
+            this.ctx.fillStyle = 'rgba(0,0,0,0.7)'; this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+            this.ctx.fillStyle = '#ffd700'; this.ctx.font = '48px Courier New'; this.ctx.textAlign = 'center';
+            this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+        }
+    }
+
+    loop(currentTime) {
+        if (!this.lastTime) this.lastTime = currentTime;
+        const deltaTime = (currentTime - this.lastTime) / 1000;
+        this.lastTime = currentTime; this.accumulator += deltaTime;
+        while (this.accumulator >= CONFIG.TIMING.STEP) {
+            this.update(CONFIG.TIMING.STEP);
+            this.accumulator -= CONFIG.TIMING.STEP;
+        }
+        this.render(); requestAnimationFrame(this.loop.bind(this));
+    }
+}
+
+// =========================================================================
+// INITIALIZATION
+// =========================================================================
+const canvas = document.getElementById('gameCanvas');
+const game = new Game(canvas);
+
+document.addEventListener('keydown', e => {
+    const key = e.key.toLowerCase();
+    if (key === 'a' || key === 'arrowleft') game.input.left = true;
+    if (key === 'd' || key === 'arrowright') game.input.right = true;
+    if (key === 'w' || key === 'arrowup') game.input.up = true;
+    if (key === 's' || key === 'arrowdown') game.input.down = true;
+    if (key === ' ') {
+        e.preventDefault();
+        if (game.state === GameState.START_SCREEN) game.start();
+        else game.dropAnchor();
+    }
+    if (key === 'p') {
+        if (game.state === GameState.PLAYING || game.state === GameState.BOSS_BATTLE) game.setState(GameState.PAUSED);
+        else if (game.state === GameState.PAUSED) game.setState(game.boss ? GameState.BOSS_BATTLE : GameState.PLAYING);
+    }
+    if (key === 'r' && (game.state === GameState.GAME_OVER || game.state === GameState.VICTORY)) game.reset();
+});
+
+document.addEventListener('keyup', e => {
+    const key = e.key.toLowerCase();
+    if (key === 'a' || key === 'arrowleft') game.input.left = false;
+    if (key === 'd' || key === 'arrowright') game.input.right = false;
+    if (key === 'w' || key === 'arrowup') game.input.up = false;
+    if (key === 's' || key === 'arrowdown') game.input.down = false;
+});
+
+game.loop(0);
+
+</script>
+</body>
+</html>

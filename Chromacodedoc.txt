@@ -1,0 +1,281 @@
+CHROMACODE - GAME DOCUMENTATION
+=====================================
+
+## OVERVIEW
+Chromacode is a production-ready spectrum-shifting platformer built with modular ES6 architecture. 
+The game features a white prism that can only survive in one color wavelength at a time, requiring 
+players to shift between Red, Green, and Blue spectrums to navigate platforms and collect shards.
+
+## ARCHITECTURE OVERVIEW
+
+### Core Classes Structure:
+```
+Game (Main orchestrator)
+├── UIManager (DOM manipulation)
+├── Player (White prism entity)
+├── Platform (Color-specific platforms)
+├── SpectraShard (Collectible items)
+├── SplitSpike (Hazard entity)
+├── ParticleSystem (Visual effects)
+└── Entity (Base class for all game objects)
+```
+
+### Key Design Patterns:
+- **Entity Component System**: All game objects inherit from Entity base class
+- **Data-Driven Levels**: Levels defined in LEVELS array, not hardcoded
+- **Fixed Timestep**: Consistent 60fps physics regardless of framerate
+- **State Machine**: Clear game states (START, PLAYING, PAUSED, etc.)
+- **Memory Management**: Particle pools with maximum limits
+
+## ADDING NEW FEATURES
+
+### 1. CREATING NEW ENEMIES
+
+To add a new enemy type (e.g., "PhaseHunter"):
+
+```javascript
+class PhaseHunter extends Entity {
+    constructor(x, y, targetColor) {
+        super(x, y, 30, 30, 'phaseHunter');
+        this.targetColor = targetColor;
+        this.speed = 2;
+        this.huntRadius = 100;
+    }
+    
+    update(dt, game) {
+        // Only active when player is in matching spectrum
+        if (game.currentSpectrum === this.targetColor) {
+            // Hunt player logic
+            const dx = game.player.x - this.x;
+            const dy = game.player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist < this.huntRadius && dist > 0) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            }
+            
+            // Check collision with player
+            if (this.intersects(game.player)) {
+                game.setState(GameState.GAME_OVER);
+            }
+        }
+    }
+    
+    render(ctx, currentSpectrum) {
+        if (currentSpectrum === this.targetColor) {
+            ctx.fillStyle = CONFIG.SPECTRUM.colors[this.targetColor];
+            ctx.shadowColor = CONFIG.SPECTRUM.colors[this.targetColor];
+            ctx.shadowBlur = 15;
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.shadowBlur = 0;
+        }
+    }
+}
+```
+
+Then add to level data:
+```javascript
+hazards: [
+    { type: 'PhaseHunter', x: 300, y: 200, targetColor: 1 }
+]
+```
+
+And update the hazard creation in `loadLevel()`:
+```javascript
+else if (h.type === 'PhaseHunter') {
+    return new PhaseHunter(h.x, h.y, h.targetColor);
+}
+```
+
+### 2. CREATING NEW POWER-UPS
+
+To add a power-up system (e.g., "SpectrumBoost"):
+
+```javascript
+class SpectrumBoost extends Entity {
+    constructor(x, y, boostType) {
+        super(x, y, 20, 20, 'spectrumBoost');
+        this.boostType = boostType; // 'speed', 'jump', 'shield'
+        this.collected = false;
+        this.pulse = 0;
+    }
+    
+    update(dt, game) {
+        if (this.collected) return;
+        this.pulse += 0.1;
+        
+        if (this.intersects(game.player)) {
+            this.collected = true;
+            game.applyPowerUp(this.boostType);
+            game.particles.add(this.x, this.y, '#ffff00', 12, 'powerup');
+        }
+    }
+    
+    render(ctx, currentSpectrum) {
+        if (this.collected) return;
+        
+        const scale = 1 + Math.sin(this.pulse) * 0.3;
+        ctx.save();
+        ctx.translate(this.x + this.w/2, this.y + this.h/2);
+        ctx.scale(scale, scale);
+        
+        ctx.fillStyle = '#ffff00';
+        ctx.shadowColor = '#ffff00';
+        ctx.shadowBlur = 20;
+        ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+        
+        ctx.restore();
+        ctx.shadowBlur = 0;
+    }
+}
+```
+
+Add power-up handling to Game class:
+```javascript
+applyPowerUp(type) {
+    switch(type) {
+        case 'speed':
+            this.gameSpeed *= 1.5;
+            setTimeout(() => this.gameSpeed /= 1.5, 5000);
+            break;
+        case 'jump':
+            this.player.jumpPower = 15;
+            setTimeout(() => this.player.jumpPower = 12, 5000);
+            break;
+        case 'shield':
+            this.player.shielded = true;
+            setTimeout(() => this.player.shielded = false, 3000);
+            break;
+    }
+}
+```
+
+### 3. ADDING NEW LEVELS
+
+Levels are data-driven. Simply add to the LEVELS array:
+
+```javascript
+{
+    level: 4,
+    targetShards: 8,
+    platforms: [
+        { x: 0, y: 550, width: 100, height: 20, color: 0 },
+        // ... more platforms
+    ],
+    shards: [
+        { x: 100, y: 400, overlap: [0, 1] },
+        // ... more shards
+    ],
+    hazards: [
+        { type: 'SplitSpike', x: 200, y: 500, width: 40, height: 20, leftColor: 0, rightColor: 2 },
+        { type: 'PhaseHunter', x: 400, y: 300, targetColor: 1 },
+        // ... more hazards
+    ]
+}
+```
+
+Update CONFIG.TOTAL_LEVELS to match the number of levels.
+
+### 4. MODIFYING GAME MECHANICS
+
+All game parameters are centralized in the CONFIG object:
+
+```javascript
+const CONFIG = {
+    SPECTRUM: {
+        colors: ['#ff0000', '#00ff00', '#0000ff'], // Add new colors here
+        names: ['RED', 'GREEN', 'BLUE'],
+    },
+    GAME_DEFAULTS: {
+        startSpeed: 3.0,    // Modify starting speed
+        maxSpeed: 6.0,      // Modify maximum speed
+        gravity: 0.5,       // Modify gravity strength
+    },
+    SCORE: {
+        shard: 200,         // Points per shard
+    }
+};
+```
+
+### 5. ADDING VISUAL EFFECTS
+
+The ParticleSystem is memory-managed and easy to extend:
+
+```javascript
+// Create custom particle effects
+game.particles.add(x, y, color, count, type);
+
+// Add new particle types in ParticleSystem.render():
+if (particle.type === 'explosion') {
+    // Custom explosion rendering
+    ctx.fillStyle = `rgba(255, 100, 0, ${alpha})`;
+    ctx.beginPath();
+    ctx.arc(particle.x, particle.y, particle.size * 2, 0, Math.PI * 2);
+    ctx.fill();
+}
+```
+
+## PERFORMANCE CONSIDERATIONS
+
+### Memory Management:
+- Particle system has maximum pool size (CONFIG.POOLS.maxParticles)
+- Entities are properly cleaned up when no longer needed
+- Fixed timestep prevents memory leaks from variable frame rates
+
+### Optimization Tips:
+- Keep entity update() methods lightweight
+- Use object pooling for frequently created/destroyed objects
+- Minimize canvas state changes in render() methods
+- Use requestAnimationFrame for smooth rendering
+
+## DEBUGGING AND TESTING
+
+### Common Issues:
+1. **Collision Detection**: Ensure entity bounds are properly set in constructor
+2. **Spectrum Logic**: Verify isActive() methods return correct boolean values
+3. **State Management**: Check that setState() is called with valid GameState values
+4. **Level Data**: Validate that level schemas have all required properties
+
+### Testing New Features:
+1. Add console.log statements in update() methods
+2. Use browser dev tools to inspect entity properties
+3. Test with different spectrum combinations
+4. Verify memory usage doesn't grow over time
+
+## FILE STRUCTURE RECOMMENDATIONS
+
+For larger projects, consider splitting into multiple files:
+
+```
+/src
+  /entities
+    - Player.js
+    - Platform.js
+    - SpectraShard.js
+    - SplitSpike.js
+  /systems
+    - ParticleSystem.js
+    - UIManager.js
+  /data
+    - levels.js
+    - config.js
+  - Game.js
+  - main.js
+```
+
+## EXTENDING THE SPECTRUM SYSTEM
+
+To add a fourth color (e.g., Yellow):
+
+1. Update CONFIG.SPECTRUM:
+```javascript
+colors: ['#ff0000', '#00ff00', '#0000ff', '#ffff00'],
+names: ['RED', 'GREEN', 'BLUE', 'YELLOW'],
+```
+
+2. Update spectrum shifting logic in shiftSpectrum()
+3. Add yellow platforms/shards to level data
+4. Update UI spectrum bar width calculations
+
+This architecture makes Chromacode highly extensible while maintaining clean, readable code that any developer can understand and modify.

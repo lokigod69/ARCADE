@@ -1,0 +1,506 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pixel Pong - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #1a1a2e, #16213e, #0f3460);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid #00ff88;
+            border-radius: 10px;
+            box-shadow: 0 0 30px #00ff88;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            background: #000;
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff88;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff88;
+            z-index: 10;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+        }
+
+        .power-up-indicator {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            color: #ffff00;
+            font-size: 16px;
+            font-weight: bold;
+        }
+
+        #controls-tooltip {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #00ff88;
+            color: #fff;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-align: left;
+            z-index: 100;
+        }
+
+        #controls-tooltip h3 {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+            text-shadow: 0 0 5px #00ff88;
+        }
+
+        #controls-tooltip ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="400"></canvas>
+        <div class="ui">
+            <span id="score">Player: 0 | AI: 0</span>
+        </div>
+        <div class="power-up-indicator" id="powerUpIndicator"></div>
+        <div id="controls-tooltip">
+            <h3>Controls</h3>
+            <ul>
+                <li><strong>W/S or Up/Down:</strong> Move Paddle</li>
+                <li><strong>Space:</strong> Start/Pause</li>
+                <li><strong>R:</strong> Restart</li>
+            </ul>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>GAME OVER!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Press R to restart</div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const scoreElement = document.getElementById('score');
+        const gameOverElement = document.getElementById('gameOver');
+        const powerUpIndicator = document.getElementById('powerUpIndicator');
+        const WIN_SCORE = 11;
+
+        // Game state
+        let gameRunning = false;
+        let playerScore = 0;
+        let aiScore = 0;
+        let gameSpeed = 1;
+
+        // Game objects
+        const ball = {
+            x: canvas.width / 2,
+            y: canvas.height / 2,
+            dx: 5,
+            dy: 3,
+            radius: 8,
+            speed: 5,
+            trail: []
+        };
+
+        const playerPaddle = {
+            x: 20,
+            y: canvas.height / 2 - 50,
+            width: 15,
+            height: 100,
+            speed: 8,
+            powerUp: null,
+            powerUpTime: 0
+        };
+
+        const aiPaddle = {
+            x: canvas.width - 35,
+            y: canvas.height / 2 - 50,
+            width: 15,
+            height: 100,
+            speed: 6
+        };
+
+        const powerUps = [];
+        const particles = [];
+
+        // Power-up types
+        const powerUpTypes = [
+            { type: 'speed', color: '#ff0088', effect: 'Speed Boost' },
+            { type: 'size', color: '#00ff88', effect: 'Bigger Paddle' },
+            { type: 'slow', color: '#0088ff', effect: 'Slow Ball' }
+        ];
+
+        // Input handling
+        const keys = {};
+        
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            if (e.key === ' ') {
+                e.preventDefault();
+                if (!gameRunning && (playerScore < WIN_SCORE && aiScore < WIN_SCORE)) {
+                    startGame();
+                } else if (gameRunning) {
+                    pauseGame();
+                }
+            }
+            
+            if (e.key.toLowerCase() === 'r') {
+                resetGame();
+            }
+        });
+
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+        });
+
+        function startGame() {
+            gameRunning = true;
+            gameOverElement.style.display = 'none';
+        }
+
+        function pauseGame() {
+            gameRunning = !gameRunning;
+        }
+
+        function resetGame() {
+            gameRunning = false;
+            playerScore = 0;
+            aiScore = 0;
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = Math.random() > 0.5 ? 5 : -5;
+            ball.dy = (Math.random() - 0.5) * 6;
+            ball.speed = 5;
+            playerPaddle.y = canvas.height / 2 - 50;
+            aiPaddle.y = canvas.height / 2 - 50;
+            playerPaddle.powerUp = null;
+            playerPaddle.powerUpTime = 0;
+            powerUps.length = 0;
+            particles.length = 0;
+            gameOverElement.style.display = 'none';
+            updateScore();
+        }
+
+        function updateScore() {
+            scoreElement.textContent = `Player: ${playerScore} | AI: ${aiScore}`;
+        }
+
+        function createParticles(x, y, color, count = 10) {
+            for (let i = 0; i < count; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    dx: (Math.random() - 0.5) * 10,
+                    dy: (Math.random() - 0.5) * 10,
+                    life: 30,
+                    maxLife: 30,
+                    color: color
+                });
+            }
+        }
+
+        function spawnPowerUp() {
+            if (Math.random() < 0.003 && powerUps.length < 2) {
+                const type = powerUpTypes[Math.floor(Math.random() * powerUpTypes.length)];
+                powerUps.push({
+                    x: canvas.width / 2 + (Math.random() - 0.5) * 200,
+                    y: Math.random() * (canvas.height - 40) + 20,
+                    width: 20,
+                    height: 20,
+                    type: type.type,
+                    color: type.color,
+                    effect: type.effect,
+                    rotation: 0
+                });
+            }
+        }
+
+        function updatePowerUps() {
+            powerUps.forEach((powerUp, index) => {
+                powerUp.rotation += 0.1;
+                
+                // Check collision with ball
+                if (ball.x + ball.radius > powerUp.x &&
+                    ball.x - ball.radius < powerUp.x + powerUp.width &&
+                    ball.y + ball.radius > powerUp.y &&
+                    ball.y - ball.radius < powerUp.y + powerUp.height) {
+                    
+                    // Apply power-up effect
+                    playerPaddle.powerUp = powerUp.type;
+                    playerPaddle.powerUpTime = 300; // 5 seconds at 60fps
+                    
+                    createParticles(powerUp.x + 10, powerUp.y + 10, powerUp.color, 15);
+                    powerUps.splice(index, 1);
+                }
+            });
+        }
+
+        function updatePlayer() {
+            // Handle power-up effects
+            if (playerPaddle.powerUpTime > 0) {
+                playerPaddle.powerUpTime--;
+                
+                switch (playerPaddle.powerUp) {
+                    case 'speed':
+                        playerPaddle.speed = 12;
+                        break;
+                    case 'size':
+                        playerPaddle.height = 150;
+                        break;
+                    case 'slow':
+                        ball.speed = 3;
+                        break;
+                }
+                
+                if (playerPaddle.powerUpTime === 0) {
+                    playerPaddle.powerUp = null;
+                    playerPaddle.speed = 8;
+                    playerPaddle.height = 100;
+                    ball.speed = 5;
+                }
+            }
+
+            // Player movement
+            if ((keys['w'] || keys['arrowup']) && playerPaddle.y > 0) {
+                playerPaddle.y -= playerPaddle.speed;
+            }
+            if ((keys['s'] || keys['arrowdown']) && playerPaddle.y < canvas.height - playerPaddle.height) {
+                playerPaddle.y += playerPaddle.speed;
+            }
+        }
+
+        function updateAI() {
+            const paddleCenter = aiPaddle.y + aiPaddle.height / 2;
+            const ballCenter = ball.y;
+            
+            if (paddleCenter < ballCenter - 10) {
+                aiPaddle.y += aiPaddle.speed;
+            } else if (paddleCenter > ballCenter + 10) {
+                aiPaddle.y -= aiPaddle.speed;
+            }
+            
+            // Keep AI paddle in bounds
+            aiPaddle.y = Math.max(0, Math.min(canvas.height - aiPaddle.height, aiPaddle.y));
+        }
+
+        function updateBall() {
+            // Add to trail
+            ball.trail.push({ x: ball.x, y: ball.y });
+            if (ball.trail.length > 10) {
+                ball.trail.shift();
+            }
+
+            ball.x += ball.dx * (ball.speed / 5);
+            ball.y += ball.dy * (ball.speed / 5);
+
+            // Ball collision with top and bottom walls
+            if (ball.y - ball.radius <= 0 || ball.y + ball.radius >= canvas.height) {
+                ball.dy = -ball.dy;
+                createParticles(ball.x, ball.y, '#ffffff', 5);
+            }
+
+            // Ball collision with player paddle
+            if (ball.x - ball.radius <= playerPaddle.x + playerPaddle.width &&
+                ball.y >= playerPaddle.y &&
+                ball.y <= playerPaddle.y + playerPaddle.height &&
+                ball.dx < 0) {
+                
+                ball.dx = -ball.dx;
+                ball.dy += (ball.y - (playerPaddle.y + playerPaddle.height / 2)) * 0.1;
+                ball.speed += 0.2;
+                createParticles(ball.x, ball.y, '#00ff88', 8);
+            }
+
+            // Ball collision with AI paddle
+            if (ball.x + ball.radius >= aiPaddle.x &&
+                ball.y >= aiPaddle.y &&
+                ball.y <= aiPaddle.y + aiPaddle.height &&
+                ball.dx > 0) {
+                
+                ball.dx = -ball.dx;
+                ball.dy += (ball.y - (aiPaddle.y + aiPaddle.height / 2)) * 0.1;
+                ball.speed += 0.2;
+                createParticles(ball.x, ball.y, '#ff0088', 8);
+            }
+
+            // Scoring
+            if (ball.x < 0) {
+                aiScore++;
+                resetBall();
+                createParticles(canvas.width / 2, canvas.height / 2, '#ff0088', 20);
+            } else if (ball.x > canvas.width) {
+                playerScore++;
+                resetBall();
+                createParticles(canvas.width / 2, canvas.height / 2, '#00ff88', 20);
+            }
+
+            updateScore();
+
+            // Check for game over
+            if (playerScore >= WIN_SCORE || aiScore >= WIN_SCORE) {
+                gameRunning = false;
+                gameOverElement.style.display = 'block';
+            }
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = Math.random() > 0.5 ? 5 : -5;
+            ball.dy = (Math.random() - 0.5) * 6;
+            ball.speed = 5;
+            ball.trail = [];
+        }
+
+        function updateParticles() {
+            particles.forEach((particle, index) => {
+                particle.x += particle.dx;
+                particle.y += particle.dy;
+                particle.dx *= 0.98;
+                particle.dy *= 0.98;
+                particle.life--;
+                
+                if (particle.life <= 0) {
+                    particles.splice(index, 1);
+                }
+            });
+        }
+
+        function render() {
+            // Clear canvas with fade effect
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw center line
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([10, 10]);
+            ctx.beginPath();
+            ctx.moveTo(canvas.width / 2, 0);
+            ctx.lineTo(canvas.width / 2, canvas.height);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw ball trail
+            ball.trail.forEach((point, index) => {
+                const alpha = index / ball.trail.length;
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.5})`;
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, ball.radius * alpha, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Draw ball
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, ball.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+
+            // Draw player paddle
+            ctx.fillStyle = playerPaddle.powerUp ? '#ffff00' : '#00ff88';
+            ctx.shadowColor = playerPaddle.powerUp ? '#ffff00' : '#00ff88';
+            ctx.shadowBlur = playerPaddle.powerUp ? 15 : 5;
+            ctx.fillRect(playerPaddle.x, playerPaddle.y, playerPaddle.width, playerPaddle.height);
+            ctx.shadowBlur = 0;
+
+            // Draw AI paddle
+            ctx.fillStyle = '#ff0088';
+            ctx.shadowColor = '#ff0088';
+            ctx.shadowBlur = 5;
+            ctx.fillRect(aiPaddle.x, aiPaddle.y, aiPaddle.width, aiPaddle.height);
+            ctx.shadowBlur = 0;
+
+            // Draw power-ups
+            powerUps.forEach(powerUp => {
+                ctx.save();
+                ctx.translate(powerUp.x + powerUp.width / 2, powerUp.y + powerUp.height / 2);
+                ctx.rotate(powerUp.rotation);
+                ctx.fillStyle = powerUp.color;
+                ctx.shadowColor = powerUp.color;
+                ctx.shadowBlur = 10;
+                ctx.fillRect(-powerUp.width / 2, -powerUp.height / 2, powerUp.width, powerUp.height);
+                ctx.restore();
+            });
+
+            // Draw particles
+            particles.forEach(particle => {
+                const alpha = particle.life / particle.maxLife;
+                ctx.fillStyle = particle.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, 2, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Update power-up indicator
+            if (playerPaddle.powerUp) {
+                const timeLeft = Math.ceil(playerPaddle.powerUpTime / 60);
+                const effect = powerUpTypes.find(p => p.type === playerPaddle.powerUp).effect;
+                powerUpIndicator.textContent = `${effect}: ${timeLeft}s`;
+                powerUpIndicator.style.display = 'block';
+            } else {
+                powerUpIndicator.style.display = 'none';
+            }
+        }
+
+        function gameLoop() {
+            if (gameRunning) {
+                updatePlayer();
+                updateAI();
+                updateBall();
+                spawnPowerUp();
+                updatePowerUps();
+                updateParticles();
+            }
+            
+            render();
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize game
+        resetGame();
+        gameLoop();
+    </script>
+</body>
+</html>

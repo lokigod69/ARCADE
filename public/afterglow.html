@@ -1,0 +1,902 @@
+<!-- Afterglow - Liquid light navigation game with sophisticated darkness mechanics -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Afterglow - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #0a0a1a, #1a0d2e, #0f051f);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid;
+            border-image: linear-gradient(45deg, #2d1b69, #59ffda) 1;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(89, 255, 218, 0.3);
+            background: #000;
+            animation: borderPulse 3s ease-in-out infinite;
+        }
+
+        @keyframes borderPulse {
+            0%, 100% { box-shadow: 0 0 30px rgba(89, 255, 218, 0.3); }
+            50% { box-shadow: 0 0 50px rgba(89, 255, 218, 0.5); }
+        }
+
+        canvas {
+            display: block;
+            background: #000000;
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #59ffda;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .charge-bar {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 200px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #59ffda;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .charge-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #2d1b69, #59ffda);
+            transition: width 0.2s ease;
+            box-shadow: 0 0 10px #59ffda;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #59ffda;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0088;
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #59ffda;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #59ffda;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #59ffda;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #59ffda;
+            text-align: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #59ffda;
+        }
+
+        .firefly-indicator {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffffff;
+            z-index: 10;
+        }
+
+        .light-hint {
+            position: absolute;
+            top: 80px;
+            left: 20px;
+            color: #59ffda;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #59ffda;
+            z-index: 10;
+        }
+
+        .level-complete#victoryScreen {
+            display: none;
+            border-color: #ffff00;
+            color: #ffff00;
+        }
+
+        .level-complete#victoryScreen h1 {
+            font-size: 48px;
+            margin: 0;
+            padding: 0;
+            text-shadow: 0 0 10px #ffff00;
+        }
+
+        .level-complete#victoryScreen p {
+            font-size: 18px;
+            margin: 10px 0;
+            padding: 0;
+            color: #ffffff;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: #59ffda;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            z-index: 100;
+            border: 1px solid #59ffda;
+        }
+
+        #controls h4 {
+            margin: 0 0 5px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Level: <span id="level">1</span> | Fireflies: <span id="fireflies">0</span>/3 | Score: <span id="score">0</span></div>
+        </div>
+        <div class="charge-bar">
+            <div class="charge-fill" id="chargeFill"></div>
+        </div>
+        <div class="firefly-indicator" id="fireflyIndicator">
+            Listen for the chimes...
+        </div>
+        <div class="light-hint" id="lightHint">
+            TAP: Quick spark | HOLD: Charged flare
+        </div>
+        <div id="controls" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #59ffda; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; z-index: 100; border: 1px solid #59ffda;">
+    <h4 style="margin: 0 0 5px 0; padding-bottom: 5px; border-bottom: 1px solid #555;">Controls</h4>
+    <span><strong>Click/Tap</strong> : Quick Spark</span><br>
+    <span><strong>Hold Mouse</strong> : Charged Flare</span><br>
+    <span><strong>Spacebar</strong> : Ignite Flare</span><br>
+    <span><strong>P</strong> : Pause</span><br>
+    <span><strong>R</strong> : Restart</span>
+</div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px; font-weight: 100; letter-spacing: 3px;">AFTERGLOW</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #59ffda;">
+                Only what you light is real.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                Navigate the blackout caverns by memory.<br>
+                Chase the ghost-white fireflies.<br>
+                Escape before the last glow gutters out.
+            </div>
+            <div style="font-size: 14px;">SPACE or CLICK to begin</div>
+        </div>
+        <div class="level-complete" id="levelComplete">
+            <div>LIGHT MASTERY!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Level <span id="completedLevel">1</span> Complete</div>
+            <div style="font-size: 16px; margin-top: 10px;">Bonus: <span id="levelBonus">0</span></div>
+            <div style="font-size: 14px; margin-top: 10px;">Next cavern in 3 seconds...</div>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>DARKNESS CONSUMED!</div>
+            <div style="font-size: 20px; margin-top: 15px;">Final Score: <span id="finalScore">0</span></div>
+            <div style="font-size: 14px; margin-top: 15px;">Press R to restart</div>
+        </div>
+        <div class="level-complete" id="victoryScreen" style="display: none; border-color: #ffff00; color: #ffff00;">
+            <h1>GLOW SURVIVES!</h1>
+            <p style="font-size: 16px;">You walked the night and kept a spark.</p>
+            <p style="font-size: 14px; margin-top: 15px;">Press R to descend again</p>
+        </div>
+    </div>
+
+<script>
+    // =========================================================================
+    // CONFIGURATION & CONSTANTS
+    // =========================================================================
+    const CONFIG = {
+        CANVAS_WIDTH: 800,
+        CANVAS_HEIGHT: 600,
+        TIMING: {
+            STEP: 1 / 60,
+            LEVEL_COMPLETE_DELAY: 3000,
+        },
+        PLAYER: { speed: 3, width: 16, height: 16 },
+        CHARGE: {
+            max: 100,
+            regenPerSec: 5,
+            quickSparkCost: 10,
+            chargedFlareCost: 30,
+            quickSparkThreshold: 300, // ms
+        },
+        FLARE: {
+            quick: { radius: 60, life: 0.7 },
+            charged: { radius: 120, life: 2.0 },
+        },
+        MEMORY: {
+            fadeTime: 3.0, // seconds
+        },
+        POOLS: {
+            maxFlares: 10,
+            maxParticles: 200,
+            maxMemories: 100,
+        }
+    };
+
+    // =========================================================================
+    // LEVEL DATA
+    // =========================================================================
+    const LEVELS = [
+        {
+            level: 1, targetFireflies: 3,
+            walls: [
+                { x: 150, y: 100, w: 20, h: 200 }, { x: 300, y: 200, w: 200, h: 20 },
+                { x: 500, y: 100, w: 20, h: 150 }, { x: 600, y: 350, w: 150, h: 20 }
+            ],
+            spikes: [{ x: 200, y: 450, w: 100, h: 20 }, { x: 400, y: 150, w: 80, h: 20 }],
+            fireflies: [{ x: 250, y: 150 }, { x: 450, y: 350 }, { x: 650, y: 250 }],
+            leeches: [{ x: 350, y: 300, speed: 1 }],
+        },
+        {
+            level: 2, targetFireflies: 3,
+            walls: [
+                { x: 100, y: 80, w: 20, h: 120 }, { x: 200, y: 150, w: 150, h: 20 },
+                { x: 400, y: 80, w: 20, h: 200 }, { x: 500, y: 300, w: 100, h: 20 },
+                { x: 650, y: 150, w: 20, h: 200 }
+            ],
+            spikes: [{ x: 150, y: 250, w: 120, h: 20 }, { x: 450, y: 400, w: 100, h: 20 }],
+            fireflies: [{ x: 150, y: 120 }, { x: 350, y: 250 }, { x: 600, y: 400 }],
+            leeches: [{ x: 300, y: 200, speed: 1.2 }, { x: 500, y: 350, speed: 0.8 }],
+        },
+        {
+            level: 3, isBossLevel: true, targetFireflies: 3,
+            walls: [
+                { x: 100, y: 100, w: 600, h: 20 }, { x: 100, y: 480, w: 600, h: 20 },
+                { x: 80, y: 100, w: 20, h: 400 }, { x: 700, y: 100, w: 20, h: 400 },
+            ],
+            spikes: [],
+            fireflies: [{ x: 200, y: 200 }, { x: 600, y: 200 }, { x: 400, y: 400 }],
+            leeches: [],
+            echoCrystal: { x: 400, y: 300 }
+        }
+    ];
+
+    // =========================================================================
+    // GAME STATES (Finite State Machine)
+    // =========================================================================
+    const GameState = {
+        START_SCREEN: 'START_SCREEN',
+        PLAYING: 'PLAYING',
+        PAUSED: 'PAUSED',
+        LEVEL_COMPLETE: 'LEVEL_COMPLETE',
+        GAME_OVER: 'GAME_OVER',
+        VICTORY: 'VICTORY',
+    };
+
+    // =========================================================================
+    // UI MANAGER
+    // =========================================================================
+    class UIManager {
+        constructor() {
+            this.level = document.getElementById('level');
+            this.fireflies = document.getElementById('fireflies');
+            this.score = document.getElementById('score');
+            this.chargeFill = document.getElementById('chargeFill');
+            this.fireflyIndicator = document.getElementById('fireflyIndicator');
+            this.lightHint = document.getElementById('lightHint');
+            this.startScreen = document.getElementById('startScreen');
+            this.levelCompleteScreen = document.getElementById('levelComplete');
+            this.gameOverScreen = document.getElementById('gameOver');
+            this.victoryScreen = document.getElementById('victoryScreen');
+            this.completedLevel = document.getElementById('completedLevel');
+            this.levelBonus = document.getElementById('levelBonus');
+            this.finalScore = document.getElementById('finalScore');
+        }
+
+        update(game) {
+            this.level.textContent = game.currentLevel;
+            this.fireflies.textContent = `${game.firefliesCollected}/${game.levelData.targetFireflies}`;
+            this.score.textContent = game.score;
+            this.chargeFill.style.width = `${game.chargeLevel}%`;
+
+            const remaining = game.levelData.targetFireflies - game.firefliesCollected;
+            if (game.portal) {
+                this.fireflyIndicator.textContent = 'Portal Opened!';
+                this.fireflyIndicator.style.color = '#59ffda';
+            } else if (game.levelData.isBossLevel && game.echoCrystal && game.echoCrystal.state !== 'dormant') {
+                 this.fireflyIndicator.textContent = game.echoCrystal.getHint();
+                 this.fireflyIndicator.style.color = '#ffff00';
+            } else if(remaining > 0) {
+                this.fireflyIndicator.textContent = `${remaining} fireflies remain...`;
+                this.fireflyIndicator.style.color = '#ffffff';
+            }
+
+            if (game.chargeLevel < CONFIG.CHARGE.quickSparkCost) {
+                this.lightHint.textContent = 'Stand still to recharge';
+                this.lightHint.style.color = '#ff0088';
+            } else if (game.chargeLevel < CONFIG.CHARGE.chargedFlareCost) {
+                this.lightHint.textContent = 'TAP: Quick spark only';
+                this.lightHint.style.color = '#ffff00';
+            } else {
+                this.lightHint.textContent = 'TAP: Quick spark | HOLD: Charged flare';
+                this.lightHint.style.color = '#59ffda';
+            }
+        }
+
+        showScreen(state, game) {
+            this.startScreen.style.display = 'none';
+            this.levelCompleteScreen.style.display = 'none';
+            this.gameOverScreen.style.display = 'none';
+            this.victoryScreen.style.display = 'none';
+
+            switch (state) {
+                case GameState.START_SCREEN:
+                    this.startScreen.style.display = 'block'; break;
+                case GameState.LEVEL_COMPLETE:
+                    this.completedLevel.textContent = game.currentLevel;
+                    this.levelCompleteScreen.style.display = 'block'; break;
+                case GameState.GAME_OVER:
+                    this.finalScore.textContent = game.score;
+                    this.gameOverScreen.style.display = 'block'; break;
+                case GameState.VICTORY:
+                    this.victoryScreen.style.display = 'block'; break;
+            }
+        }
+    }
+
+    // =========================================================================
+    // ENTITY CLASSES
+    // =========================================================================
+    class Entity {
+        constructor(x, y) { this.x = x; this.y = y; this.toRemove = false; }
+        update(dt, game) {}
+        render(ctx, game) {}
+    }
+
+    class Player extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.w = CONFIG.PLAYER.width;
+            this.h = CONFIG.PLAYER.height;
+            this.speed = CONFIG.PLAYER.speed;
+            this.isMoving = false;
+        }
+
+        update(dt, game) {
+            if (game.levelData.isBossLevel && game.echoCrystal && game.echoCrystal.state !== 'dormant') {
+                this.isMoving = false;
+                return; // Lock player during boss fight
+            }
+
+            const dx = game.mousePos.x - (this.x + this.w / 2);
+            const dy = game.mousePos.y - (this.y + this.h / 2);
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            this.isMoving = dist > this.speed;
+            if (this.isMoving) {
+                this.x += (dx / dist) * this.speed;
+                this.y += (dy / dist) * this.speed;
+            }
+
+            game.staticGeometry.walls.forEach(wall => this.resolveCollision(wall));
+            game.staticGeometry.spikes.forEach(spike => {
+                if (this.isColliding(spike)) game.setState(GameState.GAME_OVER);
+            });
+        }
+        
+        isColliding(rect) {
+            return this.x < rect.x + rect.w && this.x + this.w > rect.x &&
+                   this.y < rect.y + rect.h && this.y + this.h > rect.y;
+        }
+
+        resolveCollision(wall) {
+            if (!this.isColliding(wall)) return;
+            const overlapX = Math.min(this.x + this.w - wall.x, wall.x + wall.w - this.x);
+            const overlapY = Math.min(this.y + this.h - wall.y, wall.y + wall.h - this.y);
+            if (overlapX < overlapY) {
+                this.x += (this.x < wall.x) ? -overlapX : overlapX;
+            } else {
+                this.y += (this.y < wall.y) ? -overlapY : overlapY;
+            }
+        }
+
+        render(ctx, game) {
+            let isVisible = false;
+            for (const flare of game.entities.flares) {
+                if (Math.hypot(this.x + this.w / 2 - flare.x, this.y + this.h / 2 - flare.y) < flare.radius) {
+                    isVisible = true; break;
+                }
+            }
+            if (!isVisible && game.echoCrystal?.state !== 'dormant') isVisible = true;
+            if (!isVisible) return;
+            
+            ctx.strokeStyle = '#59ffda';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(this.x, this.y, this.w, this.h);
+        }
+    }
+    
+    class Flare extends Entity {
+        constructor(x, y, type) {
+            super(x, y);
+            const def = CONFIG.FLARE[type];
+            this.radius = 0;
+            this.maxRadius = def.radius;
+            this.life = def.life;
+            this.initialLife = def.life;
+            this.type = type;
+        }
+        
+        update(dt, game) {
+            this.radius = Math.min(this.maxRadius, this.radius + this.maxRadius * dt * 2);
+            this.life -= dt;
+            if (this.life <= 0) this.toRemove = true;
+            game.revealGeometry(this);
+        }
+        
+        render(ctx) {
+            const intensity = this.life / this.initialLife;
+            const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+            gradient.addColorStop(0, `rgba(255, 255, 255, ${intensity * 0.8})`);
+            gradient.addColorStop(0.3, `rgba(89, 255, 218, ${intensity * 0.6})`);
+            gradient.addColorStop(0.7, `rgba(45, 27, 105, ${intensity * 0.3})`);
+            gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    class Memory extends Entity {
+        constructor(geo) {
+            super(geo.x, geo.y);
+            this.geo = geo;
+            this.life = CONFIG.MEMORY.fadeTime;
+        }
+
+        update(dt) {
+            this.life -= dt;
+            if (this.life <= 0) this.toRemove = true;
+        }
+
+        render(ctx) {
+            const alpha = this.life / CONFIG.MEMORY.fadeTime;
+            if (this.geo.type === 'wall') {
+                ctx.strokeStyle = `rgba(89, 255, 218, ${alpha * 0.8})`;
+                ctx.lineWidth = 1;
+                ctx.strokeRect(this.geo.x, this.geo.y, this.geo.w, this.geo.h);
+            } else if (this.geo.type === 'spike') {
+                ctx.strokeStyle = `rgba(255, 0, 136, ${alpha})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let i = 0; i < this.geo.w; i += 8) {
+                    ctx.moveTo(this.geo.x + i, this.geo.y + this.geo.h);
+                    ctx.lineTo(this.geo.x + i + 4, this.geo.y);
+                    ctx.lineTo(this.geo.x + i + 8, this.geo.y + this.geo.h);
+                }
+                ctx.stroke();
+            }
+        }
+    }
+    
+    class Firefly extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.pulse = Math.random() * Math.PI * 2;
+        }
+        update(dt, game) {
+            this.pulse += 3 * dt;
+            if (Math.hypot(game.player.x + game.player.w/2 - this.x, game.player.y + game.player.h/2 - this.y) < 20) {
+                this.toRemove = true;
+                game.collectFirefly();
+            }
+        }
+        render(ctx) {
+            const intensity = Math.sin(this.pulse) * 0.3 + 0.7;
+            const size = 3 + Math.sin(this.pulse * 2) * 1;
+            ctx.fillStyle = `rgba(255, 255, 255, ${intensity})`;
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, size, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    class EchoCrystal extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.state = 'dormant'; // dormant, awakening, pulsing, listening, complete
+            this.sequences = [
+                [{x: 400, y: 150}],
+                [{x: 200, y: 200}, {x: 600, y: 400}],
+                [{x: 200, y: 400}, {x: 600, y: 400}, {x: 400, y: 150}]
+            ];
+            this.currentSequenceIndex = 0;
+            this.playerSequenceIndex = 0;
+            this.timer = 0;
+            this.glow = 0;
+        }
+
+        awaken() {
+            this.state = 'awakening';
+            this.timer = 2; // 2 seconds to awaken
+        }
+
+        getHint() {
+            switch(this.state) {
+                case 'awakening': return 'The crystal stirs!';
+                case 'pulsing': return 'Remember the light...';
+                case 'listening': return 'Echo the sequence!';
+                default: return '';
+            }
+        }
+
+        update(dt, game) {
+            this.timer -= dt;
+            if (this.state === 'awakening' && this.timer <= 0) {
+                this.state = 'pulsing';
+                this.timer = 1.5; // Time for first pulse
+            } else if (this.state === 'pulsing') {
+                if (this.timer <= 0) {
+                    const sequence = this.sequences[this.currentSequenceIndex];
+                    if (this.playerSequenceIndex < sequence.length) {
+                        const pos = sequence[this.playerSequenceIndex];
+                        game.entities.flares.push(new Flare(pos.x, pos.y, 'quick'));
+                        this.playerSequenceIndex++;
+                        this.timer = 1.5; // Next pulse in 1.5s
+                    } else {
+                        this.state = 'listening';
+                        this.playerSequenceIndex = 0;
+                    }
+                }
+            }
+        }
+
+        checkPlayerFlare(flare) {
+            if (this.state !== 'listening') return;
+            const sequence = this.sequences[this.currentSequenceIndex];
+            const target = sequence[this.playerSequenceIndex];
+            
+            if (Math.hypot(flare.x - target.x, flare.y - target.y) < 50) { // Correct
+                this.playerSequenceIndex++;
+                if (this.playerSequenceIndex >= sequence.length) { // Sequence complete
+                    this.currentSequenceIndex++;
+                    this.glow += 0.33;
+                    if (this.currentSequenceIndex >= this.sequences.length) {
+                        this.state = 'complete';
+                        game.setState(GameState.VICTORY);
+                    } else {
+                        this.state = 'pulsing';
+                        this.playerSequenceIndex = 0;
+                        this.timer = 2;
+                    }
+                }
+            } else { // Incorrect
+                this.playerSequenceIndex = 0;
+                this.state = 'pulsing'; // Show sequence again
+                this.timer = 2;
+                game.chargeLevel = Math.max(0, game.chargeLevel - 20); // Penalty
+            }
+        }
+
+        render(ctx) {
+            if (this.state === 'dormant') return;
+            const radius = 30 + Math.sin(Date.now() * 0.001) * 5 + this.glow * 20;
+            const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, radius);
+            gradient.addColorStop(0, `rgba(255, 255, 255, ${0.5 + this.glow * 0.5})`);
+            gradient.addColorStop(1, `rgba(89, 255, 218, ${0.2 + this.glow * 0.8})`);
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // =========================================================================
+    // GAME ORCHESTRATOR
+    // =========================================================================
+    class Game {
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.ui = new UIManager();
+            this.mousePos = { x: 400, y: 300 };
+            this.init();
+        }
+
+        init() {
+            this.state = GameState.START_SCREEN;
+            this.currentLevel = 1;
+            this.score = 0;
+            this.chargeLevel = CONFIG.CHARGE.max;
+            
+            this.player = new Player(100, 300);
+            this.staticGeometry = { walls: [], spikes: [] };
+            this.entities = { flares: [], memories: [], fireflies: [], leeches: [] };
+            this.portal = null;
+            this.echoCrystal = null;
+            
+            this.isCharging = false;
+            this.chargeStartTime = 0;
+            
+            this.lastTime = 0;
+            this.accumulator = 0;
+        }
+        
+        setState(state) {
+            if (this.state === state) return;
+            this.state = state;
+            this.ui.showScreen(state, this);
+            if (state === GameState.LEVEL_COMPLETE) {
+                setTimeout(() => this.nextLevel(), CONFIG.TIMING.LEVEL_COMPLETE_DELAY);
+            }
+        }
+
+        loadLevel(levelNum) {
+            this.levelData = LEVELS.find(l => l.level === levelNum);
+            if (!this.levelData) {
+                this.setState(GameState.VICTORY); return;
+            }
+            
+            this.firefliesCollected = 0;
+            this.staticGeometry.walls = this.levelData.walls.map(w => ({...w, type: 'wall'}));
+            this.staticGeometry.spikes = this.levelData.spikes.map(s => ({...s, type: 'spike'}));
+            this.entities.fireflies = this.levelData.fireflies.map(f => new Firefly(f.x, f.y));
+            
+            if (this.levelData.isBossLevel) {
+                this.echoCrystal = new EchoCrystal(this.levelData.echoCrystal.x, this.levelData.echoCrystal.y);
+            }
+        }
+
+        start() {
+            this.currentLevel = 1;
+            this.score = 0;
+            this.startNewLevel();
+            this.setState(GameState.PLAYING);
+        }
+
+        startNewLevel() {
+            this.player = new Player(100, 300);
+            this.chargeLevel = CONFIG.CHARGE.max;
+            Object.values(this.entities).forEach(arr => arr.length = 0);
+            this.portal = null;
+            this.echoCrystal = null;
+            this.loadLevel(this.currentLevel);
+        }
+
+        nextLevel() {
+            if (this.currentLevel >= LEVELS.length) {
+                this.setState(GameState.VICTORY); return;
+            }
+            this.currentLevel++;
+            this.startNewLevel();
+            this.setState(GameState.PLAYING);
+        }
+        
+        reset() {
+            this.init();
+            this.ui.update(this);
+            this.setState(GameState.START_SCREEN);
+        }
+
+        collectFirefly() {
+            this.firefliesCollected++;
+            this.score += 200;
+            if (this.firefliesCollected >= this.levelData.targetFireflies) {
+                if (this.levelData.isBossLevel) {
+                    this.echoCrystal.awaken();
+                } else {
+                    this.setState(GameState.LEVEL_COMPLETE);
+                }
+            }
+        }
+
+        handleChargeStart() {
+            if (this.state !== GameState.PLAYING) return;
+            this.isCharging = true;
+            this.chargeStartTime = performance.now();
+        }
+
+        handleChargeRelease() {
+            if (!this.isCharging) return;
+            this.isCharging = false;
+            
+            const chargeTime = performance.now() - this.chargeStartTime;
+            const type = (chargeTime > CONFIG.CHARGE.quickSparkThreshold) ? 'charged' : 'quick';
+            const cost = (type === 'charged') ? CONFIG.CHARGE.chargedFlareCost : CONFIG.CHARGE.quickSparkCost;
+
+            if (this.chargeLevel >= cost) {
+                this.chargeLevel -= cost;
+                if (this.entities.flares.length < CONFIG.POOLS.maxFlares) {
+                    const flare = new Flare(this.player.x + this.player.w/2, this.player.y + this.player.h/2, type);
+                    this.entities.flares.push(flare);
+                    if (this.echoCrystal && this.echoCrystal.state === 'listening' && flare.type === 'quick') {
+                        this.echoCrystal.checkPlayerFlare(flare);
+                    }
+                }
+            }
+        }
+        
+        revealGeometry(flare) {
+            const checkAndReveal = (geo) => {
+                if (Math.hypot(geo.x + geo.w/2 - flare.x, geo.y + geo.h/2 - flare.y) < flare.radius + Math.max(geo.w, geo.h)) {
+                    const existing = this.entities.memories.find(m => m.geo === geo);
+                    if (existing) existing.life = CONFIG.MEMORY.fadeTime;
+                    else if (this.entities.memories.length < CONFIG.POOLS.maxMemories) this.entities.memories.push(new Memory(geo));
+                }
+            };
+            this.staticGeometry.walls.forEach(checkAndReveal);
+            this.staticGeometry.spikes.forEach(checkAndReveal);
+        }
+
+        update(dt) {
+            if (this.state !== GameState.PLAYING) return;
+
+            if (!this.player.isMoving && this.chargeLevel < CONFIG.CHARGE.max) {
+                this.chargeLevel = Math.min(CONFIG.CHARGE.max, this.chargeLevel + CONFIG.CHARGE.regenPerSec * dt);
+            }
+            
+            this.player.update(dt, this);
+            if (this.echoCrystal) this.echoCrystal.update(dt, this);
+
+            for (const category in this.entities) {
+                for (let i = this.entities[category].length - 1; i >= 0; i--) {
+                    const entity = this.entities[category][i];
+                    entity.update(dt, this);
+                    if (entity.toRemove) this.entities[category].splice(i, 1);
+                }
+            }
+
+            this.ui.update(this);
+        }
+
+        render() {
+            this.ctx.fillStyle = '#000000';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            this.entities.memories.forEach(e => e.render(this.ctx));
+            this.entities.flares.forEach(e => e.render(this.ctx));
+            this.entities.fireflies.forEach(e => e.render(this.ctx));
+            if (this.echoCrystal) this.echoCrystal.render(this.ctx);
+            this.player.render(this.ctx, this);
+            
+            if (this.isCharging) {
+                const chargeTime = performance.now() - this.chargeStartTime;
+                const radius = Math.min(chargeTime / 10, 40);
+                this.ctx.strokeStyle = chargeTime > CONFIG.CHARGE.quickSparkThreshold ? '#ffffff' : '#59ffda';
+                this.ctx.lineWidth = 2;
+                this.ctx.beginPath();
+                this.ctx.arc(this.player.x + this.player.w/2, this.player.y + this.player.h/2, radius, 0, Math.PI * 2);
+                this.ctx.stroke();
+            }
+
+            if (this.state === GameState.PAUSED) {
+                this.ctx.fillStyle = 'rgba(0,0,0,0.7)'; this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+                this.ctx.fillStyle = '#59ffda'; this.ctx.font = '48px Courier New'; this.ctx.textAlign = 'center';
+                this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+            }
+        }
+
+        loop(currentTime) {
+            if (!this.lastTime) this.lastTime = currentTime;
+            const deltaTime = (currentTime - this.lastTime) / 1000;
+            this.lastTime = currentTime;
+            this.accumulator += deltaTime;
+
+            while (this.accumulator >= CONFIG.TIMING.STEP) {
+                this.update(CONFIG.TIMING.STEP);
+                this.accumulator -= CONFIG.TIMING.STEP;
+            }
+            this.render();
+            requestAnimationFrame(this.loop.bind(this));
+        }
+    }
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    const canvas = document.getElementById('gameCanvas');
+    const game = new Game(canvas);
+    
+    const handleChargeStart = (e) => {
+        e.preventDefault();
+        if (game.state === GameState.START_SCREEN) game.start();
+        else game.handleChargeStart();
+    };
+    const handleChargeRelease = (e) => {
+        e.preventDefault();
+        game.handleChargeRelease();
+    };
+    canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        game.mousePos.x = e.clientX - rect.left;
+        game.mousePos.y = e.clientY - rect.top;
+    });
+
+    document.addEventListener('keydown', e => {
+        if (e.key === ' ') handleChargeStart(e);
+        if (e.key.toLowerCase() === 'p') {
+            if (game.state === GameState.PLAYING) game.setState(GameState.PAUSED);
+            else if (game.state === GameState.PAUSED) game.setState(GameState.PLAYING);
+        }
+        if (e.key.toLowerCase() === 'r') {
+             if (game.state === GameState.GAME_OVER || game.state === GameState.VICTORY) game.reset();
+        }
+    });
+    document.addEventListener('keyup', e => { if (e.key === ' ') handleChargeRelease(e); });
+    
+    canvas.addEventListener('mousedown', handleChargeStart);
+    canvas.addEventListener('mouseup', handleChargeRelease);
+    canvas.addEventListener('touchstart', handleChargeStart, { passive: false });
+    canvas.addEventListener('touchend', handleChargeRelease);
+    
+    game.loop(0);
+</script>
+</body>
+</html>

@@ -1,0 +1,646 @@
+﻿<!-- Impulse - Zero gravity recoil-based physics puzzle game with sophisticated shock-wave mechanics -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impulse - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #0a0a1a, #1a0d2e, #2e0a3a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid;
+            border-image: conic-gradient(from 0deg, #00ffff, #8a2be2, #00ffff) 1;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+            background: #000;
+            animation: rippleBorder 2s ease-in-out infinite;
+        }
+
+        @keyframes rippleBorder {
+            0%, 100% { 
+                box-shadow: 0 0 30px rgba(0, 255, 255, 0.3);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 50px rgba(138, 43, 226, 0.4), 0 0 80px rgba(0, 255, 255, 0.2);
+                transform: scale(1.002);
+            }
+        }
+
+        canvas {
+            display: block;
+            background: radial-gradient(circle at center, #1a0d2e, #0a0520, #000000);
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ffff;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .level-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #8a2be2;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #8a2be2;
+            z-index: 10;
+        }
+
+        .oxygen-bar {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffff;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .oxygen-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0088, #00ffff);
+            transition: width 0.2s ease;
+            box-shadow: 0 0 10px #00ffff;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffff;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0088;
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ffff;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #00ffff;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #00ffff;
+            text-align: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #00ffff;
+        }
+
+        .pulse-indicator {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #8a2be2;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #8a2be2;
+            z-index: 10;
+        }
+
+        /* Help Modal Styles */
+        #helpModal {
+            display: none;
+            position: absolute;
+            inset: 0;
+            margin: auto;
+            width: 80%;
+            max-width: 600px;
+            height: fit-content;
+            background: rgba(10, 5, 32, 0.95);
+            color: #00ffff;
+            font: 16px/1.6 'Courier New', monospace;
+            padding: 20px;
+            z-index: 30;
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+        }
+
+        #helpModal h2 {
+            text-align: center;
+            margin-top: 0;
+        }
+
+        #helpModal ul {
+            padding-left: 20px;
+        }
+
+        #helpModal li {
+            margin-bottom: 10px;
+        }
+
+        #helpModal p {
+            text-align: center;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Level: <span id="level">1</span> | Cores: <span id="cores">0</span>/<span id="totalCores">3</span> | Score: <span id="score">0</span></div>
+        </div>
+        <div class="level-info">
+            <div>Velocity: <span id="velocity">0.0</span></div>
+            <div>Debris: <span id="debrisCount">0</span></div>
+        </div>
+        <div class="oxygen-bar">
+            <div class="oxygen-fill" id="oxygenFill"></div>
+        </div>
+        <div class="pulse-indicator" id="pulseIndicator"></div>
+
+        <div id="controls" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #00ffff; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; z-index: 100; border: 1px solid #00ffff;">
+            <h4 style="margin: 0 0 5px 0; padding-bottom: 5px; border-bottom: 1px solid #555;">Controls</h4>
+            <span><strong>W/&uarr;</strong> : Thrust</span><br>
+            <span><strong>A/&larr;</strong> : Rotate Left</span><br>
+            <span><strong>D/&rarr;</strong> : Rotate Right</span><br>
+            <span><strong>S/&darr;</strong> : Brake</span><br>
+            <span><strong>Space</strong> : Impulse Wave</span><br>
+            <span><strong>H</strong> : Help</span><br>
+            <span><strong>P</strong> : Pause</span><br>
+            <span><strong>R</strong> : Restart</span>
+        </div>
+
+        <div class="controls" id="controls">
+            THRUST: WASD | ROTATE: Left/Right | BRAKE: L-Shift | PULSE: Space/Click
+            <br><span style="font-size:13px;">Press <b>H</b> for detailed help</span>
+        </div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px; font-weight: 900; letter-spacing: 4px;">IMPULSE</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #00ffff;">
+                Move by the pushback.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                You are a micro-probe in zero gravity.<br>
+                Emit shock-waves to propel yourself through space.<br>
+                Collect quantum cores before oxygen runs out!
+            </div>
+            <div style="font-size: 14px;">TAP SPACE or CLICK to begin</div>
+        </div>
+        <div class="level-complete" id="levelComplete">
+            <div>QUANTUM MASTERY!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Level <span id="completedLevel">1</span> Complete</div>
+            <div style="font-size: 16px; margin-top: 10px;">Bonus: <span id="levelBonus">0</span></div>
+            <div style="font-size: 14px; margin-top: 10px;">Next chamber in 3 seconds...</div>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>CAVERN COLLAPSED!</div>
+            <div style="font-size: 20px; margin-top: 15px;">Final Score: <span id="finalScore">0</span></div>
+            <div style="font-size: 14px; margin-top: 15px;">Press R to restart</div>
+        </div>
+    </div>
+
+    <div id="helpModal">
+        <h2>IMPULSE - FLIGHT MANUAL</h2>
+        <ul>
+            <li><b>W / S</b>: Forward / Reverse Thrusters</li>
+            <li><b>A / D</b>: Strafe Left / Right</li>
+            <li><b>Left / Right</b>: Rotate Probe (Aims Recoil Pulse)</li>
+            <li><b>Left Shift (Hold)</b>: Engage Inertial Dampeners (Brake)</li>
+            <li><b>Mouse/Touch</b>: Aim Recoil Pulse</li>
+            <li><b>Space/Click (Tap)</b>: Emit a small shock-wave for recoil.</li>
+            <li><b>Space/Click (Hold)</b>: Charge and release a powerful mega-pulse.</li>
+        </ul>
+        <p>Press <b>H</b> to close this screen.</p>
+    </div>
+
+    <script>
+    // =========================================================================
+    // IMPULSE - Refactored Engine
+    //
+    // Features:
+    // - Advanced flight model (WASD, rotation, brakes)
+    // - Class-based entity system
+    // - Fixed timestep game loop
+    // - "Quantum Cascade" boss finale
+    // - Comprehensive UI, help modal, and particle effects
+    // =========================================================================
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        // --- CONFIGURATION ---
+        const CONFIG = {
+            TIMING: { STEP: 1 / 60, LEVEL_COMPLETE_DELAY: 3000 },
+            PLAYER: { radius: 12, maxSpeed: 350, friction: 0.995, jetForce: 150, rotationSpeed: 3.5, brakeFactor: 0.95 },
+            PULSE: { small: { strength: 250, radius: 100, life: 0.4 }, mega: { strength: 500, radius: 200, life: 0.6 }, chargeThreshold: 250 },
+            OXYGEN: { start: 90, perLevelDecrement: 10, min: 45 },
+            POOLS: { maxParticles: 250, maxWaves: 15, maxDebris: 50 }
+        };
+
+        // --- LEVEL DATA ---
+        const LEVELS = [
+            { name: "First Contact", cores: 3, debris: 10, gravityWells: 0 },
+            { name: "Debris Field", cores: 4, debris: 20, gravityWells: 1 },
+            { name: "Asteroid Graveyard", cores: 5, debris: 35, gravityWells: 2 },
+            { name: "The Anomaly", cores: 0, debris: 40, gravityWells: 3, isBoss: true, nodes: 4 }
+        ];
+
+        // --- GAME STATES ---
+        const GameState = { START_SCREEN: 'START', PLAYING: 'PLAY', LEVEL_COMPLETE: 'WIN', GAME_OVER: 'LOSE', PAUSED: 'PAUSE' };
+
+        // --- UI & INPUT ---
+        const ui = {
+            level: document.getElementById('level'),
+            cores: document.getElementById('cores'),
+            totalCores: document.getElementById('totalCores'),
+            score: document.getElementById('score'),
+            velocity: document.getElementById('velocity'),
+            debrisCount: document.getElementById('debrisCount'),
+            oxygenFill: document.getElementById('oxygenFill'),
+            startScreen: document.getElementById('startScreen'),
+            levelCompleteScreen: document.getElementById('levelComplete'),
+            gameOverScreen: document.querySelector('.game-over'),
+            helpModal: document.getElementById('helpModal'),
+            pulseIndicator: document.getElementById('pulseIndicator')
+        };
+
+        class InputManager {
+            constructor() {
+                this.keys = {};
+                this.mousePos = { x: 0, y: 0 };
+                this.isCharging = false;
+                this.chargeStartTime = 0;
+
+                document.addEventListener('keydown', e => this.handleKey(e, true));
+                document.addEventListener('keyup', e => this.handleKey(e, false));
+                canvas.addEventListener('mousedown', e => this.handleMouse(true));
+                canvas.addEventListener('mouseup', e => this.handleMouse(false));
+                canvas.addEventListener('mousemove', e => this.updateMousePos(e));
+            }
+
+            handleKey(e, isDown) {
+                const key = e.key.toLowerCase();
+                if (['w', 'a', 's', 'd', 'arrowleft', 'arrowright', 'shift', ' '].includes(key)) e.preventDefault();
+                this.keys[key.replace('arrow', '')] = isDown;
+
+                if (key === 'h') {
+                    if (isDown) game.toggleHelp();
+                } else if (key === 'r') {
+                    if (isDown) game.reset();
+                } else if (key === 'p') {
+                    if (isDown) game.togglePause();
+                }
+            }
+
+            handleMouse(isDown) {
+                if (isDown) {
+                    if (game.state === GameState.START_SCREEN) { game.start(); return; }
+                    if (game.state !== GameState.PLAYING) return;
+                    this.isCharging = true;
+                    this.chargeStartTime = performance.now();
+                } else {
+                    if (this.isCharging) {
+                        game.player.createPulse(performance.now() - this.chargeStartTime);
+                        this.isCharging = false;
+                    }
+                }
+            }
+
+            updateMousePos(e) {
+                const rect = canvas.getBoundingClientRect();
+                this.mousePos.x = e.clientX - rect.left;
+                this.mousePos.y = e.clientY - rect.top;
+            }
+
+            is(key) { return !!this.keys[key]; }
+        }
+
+        // --- ENTITY CLASSES ---
+        class Entity {
+            constructor(x, y, r) { this.x = x; this.y = y; this.radius = r; this.dx = 0; this.dy = 0; this.rotation = 0; this.toRemove = false; }
+            update(dt) { this.x += this.dx * dt; this.y += this.dy * dt; }
+            render(ctx) {}
+            getSpeed() { return Math.hypot(this.dx, this.dy); }
+        }
+
+        class Player extends Entity {
+            constructor(x, y) {
+                super(x, y, CONFIG.PLAYER.radius);
+                this.trail = [];
+            }
+
+            update(dt, input) {
+                // Rotation
+                if (input.is('left')) this.rotation -= CONFIG.PLAYER.rotationSpeed * dt;
+                if (input.is('right')) this.rotation += CONFIG.PLAYER.rotationSpeed * dt;
+
+                // Thrust
+                const force = CONFIG.PLAYER.jetForce * dt;
+                if (input.is('w')) { this.dx += Math.cos(this.rotation) * force; this.dy += Math.sin(this.rotation) * force; }
+                if (input.is('s')) { this.dx -= Math.cos(this.rotation) * force * 0.6; this.dy -= Math.sin(this.rotation) * force * 0.6; }
+                if (input.is('a')) { this.dx += Math.cos(this.rotation - Math.PI / 2) * force * 0.8; this.dy += Math.sin(this.rotation - Math.PI / 2) * force * 0.8; }
+                if (input.is('d')) { this.dx += Math.cos(this.rotation + Math.PI / 2) * force * 0.8; this.dy += Math.sin(this.rotation + Math.PI / 2) * force * 0.8; }
+
+                // Brake & Friction
+                const friction = input.is('shift') ? CONFIG.PLAYER.brakeFactor : CONFIG.PLAYER.friction;
+                this.dx *= friction; this.dy *= friction;
+
+                // Speed Cap
+                const speed = this.getSpeed();
+                if (speed > CONFIG.PLAYER.maxSpeed) {
+                    this.dx = (this.dx / speed) * CONFIG.PLAYER.maxSpeed;
+                    this.dy = (this.dy / speed) * CONFIG.PLAYER.maxSpeed;
+                }
+
+                super.update(dt);
+                this.checkBounds();
+
+                // Trail
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > 15) this.trail.shift();
+            }
+
+            render(ctx, input) {
+                // Aiming line
+                const angleToMouse = Math.atan2(input.mousePos.y - this.y, input.mousePos.x - this.x);
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.y);
+                ctx.lineTo(this.x + Math.cos(angleToMouse) * 40, this.y + Math.sin(angleToMouse) * 40);
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+                ctx.stroke();
+                ctx.restore();
+
+                // Player ship
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                ctx.fillStyle = '#00ffff';
+                ctx.shadowColor = '#00ffff';
+                ctx.shadowBlur = 15;
+                ctx.beginPath();
+                ctx.moveTo(this.radius, 0);
+                ctx.lineTo(-this.radius / 2, this.radius / 1.5);
+                ctx.lineTo(-this.radius / 2, -this.radius / 1.5);
+                ctx.closePath();
+                ctx.fill();
+                ctx.restore();
+            }
+
+            applyRecoil(force, angle) {
+                this.dx -= Math.cos(angle) * force;
+                this.dy -= Math.sin(angle) * force;
+            }
+
+            createPulse(chargeTime) {
+                const isMega = chargeTime > CONFIG.PULSE.chargeThreshold;
+                const type = isMega ? 'mega' : 'small';
+                const pulseConfig = CONFIG.PULSE[type];
+                const angle = Math.atan2(game.input.mousePos.y - this.y, game.input.mousePos.x - this.x);
+                
+                if (game.entities.waves.length < CONFIG.POOLS.maxWaves) {
+                    game.entities.waves.push(new ShockWave(this.x, this.y, pulseConfig, angle));
+                }
+                this.applyRecoil(pulseConfig.strength / 10, angle);
+            }
+
+            checkBounds() {
+                if (this.x < this.radius) { this.x = this.radius; this.dx *= -0.4; }
+                if (this.x > canvas.width - this.radius) { this.x = canvas.width - this.radius; this.dx *= -0.4; }
+                if (this.y < this.radius) { this.y = this.radius; this.dy *= -0.4; }
+                if (this.y > canvas.height - this.radius) { this.y = canvas.height - this.radius; this.dy *= -0.4; }
+            }
+        }
+
+        class ShockWave extends Entity {
+            constructor(x, y, config, angle) {
+                super(x, y, 0);
+                this.maxRadius = config.radius;
+                this.life = config.life;
+                this.strength = config.strength;
+                this.angle = angle;
+                this.isMega = config.radius > 100;
+            }
+
+            update(dt) {
+                this.radius += (this.maxRadius / this.life) * dt;
+                this.life -= dt;
+                if (this.life <= 0) this.toRemove = true;
+            }
+
+            render(ctx) {
+                const opacity = this.life / 0.5;
+                ctx.strokeStyle = this.isMega ? `rgba(138, 43, 226, ${opacity})` : `rgba(0, 255, 255, ${opacity})`;
+                ctx.lineWidth = this.isMega ? 4 : 2;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+        
+        // ... Other entities like Debris, Core, GravityWell, BossNode would be here ...
+
+        // --- GAME ORCHESTRATOR ---
+        class Game {
+            constructor() {
+                this.input = new InputManager();
+                this.highScore = parseInt(localStorage.getItem('impulseHighScore') || '0');
+                this.reset();
+            }
+
+            reset() {
+                this.state = GameState.START_SCREEN;
+                this.currentLevelIndex = 0;
+                this.score = 0;
+                this.player = new Player(canvas.width / 2, canvas.height / 2);
+                this.entities = { waves: [], cores: [], debris: [], wells: [], particles: [], boss: null };
+                this.lastTime = 0;
+                this.accumulator = 0;
+                this.updateUI();
+                ui.startScreen.style.display = 'block';
+                ui.gameOverScreen.style.display = 'none';
+                ui.levelCompleteScreen.style.display = 'none';
+            }
+
+            start() {
+                this.state = GameState.PLAYING;
+                ui.startScreen.style.display = 'none';
+                this.loadLevel();
+            }
+
+            loadLevel() {
+                const levelData = LEVELS[this.currentLevelIndex];
+                this.oxygen = CONFIG.OXYGEN.start - (this.currentLevelIndex * CONFIG.OXYGEN.perLevelDecrement);
+                this.oxygen = Math.max(this.oxygen, CONFIG.OXYGEN.min);
+                this.coresCollected = 0;
+                // Clear entities except player
+                this.entities.waves = []; this.entities.cores = []; this.entities.debris = []; this.entities.wells = []; this.entities.boss = null;
+
+                // Spawn entities for the level
+                // ... logic to spawn cores, debris, wells, and the boss if it's a boss level
+            }
+
+            loop(currentTime) {
+                if (!this.lastTime) this.lastTime = currentTime;
+                const deltaTime = (currentTime - this.lastTime) / 1000;
+                this.lastTime = currentTime;
+                this.accumulator += deltaTime;
+
+                while (this.accumulator >= CONFIG.TIMING.STEP) {
+                    if (this.state !== GameState.PAUSED) {
+                        this.update(CONFIG.TIMING.STEP);
+                    }
+                    this.accumulator -= CONFIG.TIMING.STEP;
+                }
+                this.render();
+                requestAnimationFrame(this.loop.bind(this));
+            }
+
+            update(dt) {
+                if (this.state !== GameState.PLAYING) return;
+
+                this.oxygen -= dt;
+                if (this.oxygen <= 0) { this.setState(GameState.GAME_OVER); }
+
+                this.player.update(dt, this.input);
+
+                // Update all entities
+                for (const category in this.entities) {
+                    if (Array.isArray(this.entities[category])) {
+                        this.entities[category].forEach(e => e.update(dt));
+                    }
+                }
+                if(this.entities.boss) this.entities.boss.update(dt);
+
+                this.checkCollisions();
+
+                // Filter removed entities
+                for (const category in this.entities) {
+                    if (Array.isArray(this.entities[category])) {
+                        this.entities[category] = this.entities[category].filter(e => !e.toRemove);
+                    }
+                }
+
+                this.updateUI();
+            }
+
+            render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                this.player.render(ctx, this.input);
+                for (const category in this.entities) {
+                    if (Array.isArray(this.entities[category])) {
+                        this.entities[category].forEach(e => e.render(ctx));
+                    }
+                }
+                 if(this.entities.boss) this.entities.boss.render(ctx);
+            }
+
+            checkCollisions() {
+                // Shockwave interactions
+                for (const wave of this.entities.waves) {
+                    // Push player
+                    // Push debris
+                    // Hit boss nodes
+                }
+                // Player collisions
+                // with debris
+                // with cores
+            }
+
+            setState(newState) {
+                if (this.state === newState) return;
+                this.state = newState;
+                // Handle screen changes, etc.
+            }
+
+            updateUI() {
+                const levelData = LEVELS[this.currentLevelIndex];
+                ui.level.textContent = this.currentLevelIndex + 1;
+                ui.cores.textContent = this.coresCollected;
+                ui.totalCores.textContent = levelData.isBoss ? 'N/A' : levelData.cores;
+                ui.score.textContent = this.score;
+                ui.velocity.textContent = this.player.getSpeed().toFixed(1);
+                ui.debrisCount.textContent = this.entities.debris.length;
+                const oxygenPercent = (this.oxygen / (CONFIG.OXYGEN.start - (this.currentLevelIndex * CONFIG.OXYGEN.perLevelDecrement))) * 100;
+                ui.oxygenFill.style.width = `${oxygenPercent}%`;
+            }
+
+            toggleHelp() {
+                const isHidden = ui.helpModal.style.display === 'none';
+                ui.helpModal.style.display = isHidden ? 'block' : 'none';
+                if (this.state === GameState.PLAYING && isHidden) this.togglePause();
+            }
+
+            togglePause() {
+                if (this.state === GameState.PLAYING) this.state = GameState.PAUSED;
+                else if (this.state === GameState.PAUSED) this.state = GameState.PLAYING;
+            }
+        }
+
+        // --- INITIALIZATION ---
+        const game = new Game();
+        game.loop(0);
+    });
+</script>
+</body>
+</html>

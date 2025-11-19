@@ -1,0 +1,754 @@
+﻿<!-- Gravity Flip - Refactored with production-ready architecture, finite level system, and victory finale -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gravity Flip - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #2d1b69, #1a0d3d, #0f051f);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid;
+            border-image: linear-gradient(45deg, #32ff7e, #00d2ff) 1;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(50, 255, 126, 0.3);
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(180deg, #2d1b69, #1a0d3d, #0f051f);
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #32ff7e;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #32ff7e;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .high-score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #00d2ff;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00d2ff;
+            z-index: 10;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #32ff7e;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0088;
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffff00;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ffff00;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ffff00;
+        }
+
+        .victory-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #32ff7e;
+            font-size: 36px;
+            font-weight: bold;
+            text-shadow: 0 0 30px #32ff7e;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.95);
+            padding: 40px;
+            border-radius: 20px;
+            border: 4px solid #32ff7e;
+            animation: victoryPulse 2s ease-in-out infinite;
+        }
+
+        @keyframes victoryPulse {
+            0%, 100% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.02); }
+        }
+
+        .gravity-indicator {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            color: #00d2ff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 15px #00d2ff;
+            z-index: 10;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #32ff7e;
+            text-align: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #32ff7e;
+        }
+
+        .level-progress {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.5);
+            border: 2px solid #32ff7e;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #32ff7e, #00d2ff);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 10px #32ff7e;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Level: <span id="level">1</span>/<span id="totalLevels">5</span> | Distance: <span id="distance">0</span>m | Shards: <span id="shards">0</span> | Score: <span id="score">0</span></div>
+            <div style="font-size: 14px; margin-top: 5px;">Speed: <span id="speed">1.0</span>x | Target: <span id="target">1000</span>m</div>
+        </div>
+        <div class="high-score" id="highScore">
+            Best: <span id="highScoreValue">0</span>
+        </div>
+        <div class="level-progress">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+        <div class="gravity-indicator" id="gravityIndicator">Down</div>
+        <div id="controls" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #32ff7e; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; z-index: 100; border: 1px solid #32ff7e;">
+            <h4 style="margin: 0 0 5px 0; padding-bottom: 5px; border-bottom: 1px solid #555;">Controls</h4>
+            <span><strong>Click/Tap</strong> : Flip Gravity</span><br>
+            <span><strong>Space</strong> : Flip Gravity</span><br>
+            <span><strong>P</strong> : Pause</span><br>
+            <span><strong>R</strong> : Restart</span>
+        </div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px;">GRAVITY FLIP</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #00d2ff;">
+                Tap to turn the world upside-down.<br>
+                Collect shards, outrun oblivion.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                Complete 5 challenging levels to master gravity itself!
+            </div>
+            <div style="font-size: 14px;">TAP SPACE or CLICK to start</div>
+        </div>
+        <div class="level-complete" id="levelComplete">
+            <div>LEVEL MASTERY!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Level <span id="completedLevel">1</span> Complete</div>
+            <div style="font-size: 16px; margin-top: 10px;">Bonus: <span id="levelBonus">0</span></div>
+            <div style="font-size: 14px; margin-top: 10px;">Next level in 3 seconds...</div>
+        </div>
+        <div class="victory-screen" id="victoryScreen">
+            <div style="font-size: 48px; margin-bottom: 20px;">GRAVITY MASTERED!</div>
+            <div style="font-size: 24px; margin-bottom: 15px; color: #00d2ff;">
+                You flipped fate itself!
+            </div>
+            <div style="font-size: 18px; margin-bottom: 20px;">
+                Final Score: <span id="victoryScore">0</span>
+            </div>
+            <div style="font-size: 16px; margin-bottom: 20px;" id="victoryRecord"></div>
+            <button onclick="game.resetGame()" style="
+                background: linear-gradient(45deg, #32ff7e, #00d2ff);
+                border: none;
+                color: #000;
+                padding: 15px 30px;
+                font-size: 18px;
+                font-weight: bold;
+                border-radius: 10px;
+                cursor: pointer;
+                font-family: 'Courier New', monospace;
+            ">PLAY AGAIN</button>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>OBLIVION REACHED!</div>
+            <div style="font-size: 20px; margin-top: 15px;">Distance: <span id="finalDistance">0</span>m</div>
+            <div style="font-size: 18px; margin-top: 10px;">Shards: <span id="finalShards">0</span></div>
+            <div style="font-size: 16px; margin-top: 10px;" id="newRecord"></div>
+            <div style="font-size: 14px; margin-top: 15px;">Press R to restart</div>
+        </div>
+    </div>
+
+    <script>
+        // =================================================================================
+        // Gravity Flip - Refactored Engine
+        //
+        // Features:
+        // - Class-based entity system (Player, Obstacles, Collectibles)
+        // - Finite State Machine (FSM) for game states
+        // - Data-driven level design
+        // - "Singularity Gauntlet" boss finale
+        // - Comprehensive UI and particle effects
+        // =================================================================================
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('gameCanvas');
+            const ctx = canvas.getContext('2d');
+
+            // --- DOM UI Elements ---
+            const ui = {
+                level: document.getElementById('level'),
+                totalLevels: document.getElementById('totalLevels'),
+                distance: document.getElementById('distance'),
+                shards: document.getElementById('shards'),
+                score: document.getElementById('score'),
+                speed: document.getElementById('speed'),
+                target: document.getElementById('target'),
+                highScoreValue: document.getElementById('highScoreValue'),
+                progressFill: document.getElementById('progressFill'),
+                gravityIndicator: document.getElementById('gravityIndicator'),
+                startScreen: document.getElementById('startScreen'),
+                gameOverScreen: document.querySelector('.game-over'),
+                levelCompleteScreen: document.querySelector('.level-complete'),
+                victoryScreen: document.querySelector('.victory-screen')
+            };
+
+            // --- Game States (FSM) ---
+            const GameState = {
+                START_SCREEN: 'START_SCREEN',
+                PLAYING: 'PLAYING',
+                LEVEL_COMPLETE: 'LEVEL_COMPLETE',
+                GAME_OVER: 'GAME_OVER',
+                VICTORY: 'VICTORY',
+                PAUSED: 'PAUSED'
+            };
+
+            // --- Level Configuration ---
+            const LEVELS = [
+                { distance: 1000, speed: 4, obstacleRate: 0.015, shardRate: 0.01, name: "Escape Velocity" },
+                { distance: 1500, speed: 5, obstacleRate: 0.02, shardRate: 0.008, name: "Event Horizon Approach" },
+                { distance: 2000, speed: 6, obstacleRate: 0.025, shardRate: 0.007, name: "Quantum Foam" },
+                { distance: 2500, speed: 7, obstacleRate: 0.03, shardRate: 0.006, name: "Chrono Shear" },
+                { distance: 3000, speed: 8, obstacleRate: 0.04, shardRate: 0.01, name: "The Singularity Gauntlet", isBoss: true, requiredShards: 50 }
+            ];
+
+            class Game {
+                constructor() {
+                    this.highScore = localStorage.getItem('gravityFlipHighScore') || 0;
+                    this.reset();
+                    this.initControls();
+                }
+
+                reset() {
+                    this.state = GameState.START_SCREEN;
+                    this.levelManager = new LevelManager(LEVELS);
+                    this.player = new Player(100, canvas.height / 2);
+                    this.entities = [this.player];
+                    this.particleSystem = new ParticleSystem();
+                    this.distanceTraveled = 0;
+                    this.score = 0;
+                    this.shardsCollected = 0;
+                    this.lastTime = 0;
+                    this.cameraShake = 0;
+                    this.paused = false;
+                    this.updateUI();
+                    ui.startScreen.style.display = 'flex';
+                    ui.gameOverScreen.style.display = 'none';
+                    ui.levelCompleteScreen.style.display = 'none';
+                    ui.victoryScreen.style.display = 'none';
+                }
+
+                initControls() {
+                    window.addEventListener('keydown', (e) => {
+                        if (e.code === 'Space') this.handleInput();
+                        if (e.code === 'KeyR') this.reset();
+                        if (e.code === 'KeyP') this.togglePause();
+                    });
+                    canvas.addEventListener('click', () => this.handleInput());
+                }
+
+                handleInput() {
+                    switch (this.state) {
+                        case GameState.START_SCREEN:
+                            this.startLevel();
+                            break;
+                        case GameState.PLAYING:
+                            this.player.flipGravity();
+                            this.particleSystem.emit(this.player.x, this.player.y, '#00d2ff', 10, 'flip');
+                            break;
+                        case GameState.GAME_OVER:
+                        case GameState.VICTORY:
+                            this.reset();
+                            break;
+                    }
+                }
+
+                togglePause() {
+                    if (this.state === GameState.PLAYING || this.state === GameState.PAUSED) {
+                        this.paused = !this.paused;
+                        this.state = this.paused ? GameState.PAUSED : GameState.PLAYING;
+                        // You might want to show a pause overlay here
+                    }
+                }
+
+                startLevel() {
+                    this.state = GameState.PLAYING;
+                    this.distanceTraveled = 0;
+                    this.entities = [this.player]; // Keep player, clear obstacles
+                    this.player.resetForLevel();
+                    this.levelManager.startCurrentLevel();
+                    ui.startScreen.style.display = 'none';
+                    ui.levelCompleteScreen.style.display = 'none';
+                    this.updateUI();
+                }
+
+                gameLoop(timestamp) {
+                    const deltaTime = (timestamp - this.lastTime) / 1000 || 0;
+                    this.lastTime = timestamp;
+
+                    if (this.state !== GameState.PAUSED) {
+                        this.update(deltaTime);
+                        this.draw();
+                    }
+
+                    requestAnimationFrame(this.gameLoop.bind(this));
+                }
+
+                update(deltaTime) {
+                    if (this.state !== GameState.PLAYING) return;
+
+                    const level = this.levelManager.getCurrentLevel();
+                    this.distanceTraveled += level.speed * deltaTime * 10;
+
+                    // Update all entities
+                    this.entities.forEach(entity => entity.update(deltaTime, level.speed));
+                    this.particleSystem.update(deltaTime, level.speed);
+
+                    // Generate new entities
+                    this.levelManager.generateEntities(this.entities, this.distanceTraveled);
+
+                    // Collision detection
+                    this.checkCollisions();
+
+                    // Filter out off-screen entities
+                    this.entities = this.entities.filter(e => e.x > -e.width);
+
+                    // Update UI
+                    this.updateUI();
+
+                    // Check win/loss conditions
+                    if (this.player.isOffscreen(canvas.height)) {
+                        this.setState(GameState.GAME_OVER);
+                    } else if (this.distanceTraveled >= level.distance) {
+                        if (level.isBoss && this.shardsCollected < level.requiredShards) {
+                            this.setState(GameState.GAME_OVER); // Failed the gauntlet
+                        } else if (this.levelManager.isLastLevel()) {
+                            this.setState(GameState.VICTORY);
+                        } else {
+                            this.setState(GameState.LEVEL_COMPLETE);
+                        }
+                    }
+                     if (this.cameraShake > 0) {
+                        this.cameraShake -= deltaTime * 5;
+                        if (this.cameraShake < 0) this.cameraShake = 0;
+                    }
+                }
+
+                draw() {
+                    ctx.save();
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Camera Shake
+                    const shakeX = (Math.random() - 0.5) * this.cameraShake;
+                    const shakeY = (Math.random() - 0.5) * this.cameraShake;
+                    ctx.translate(shakeX, shakeY);
+
+                    // Draw all entities and particles
+                    this.entities.forEach(entity => entity.draw(ctx));
+                    this.particleSystem.draw(ctx);
+
+                    ctx.restore();
+                }
+
+                checkCollisions() {
+                    for (let i = this.entities.length - 1; i >= 0; i--) {
+                        const entity = this.entities[i];
+                        if (entity === this.player) continue;
+
+                        if (this.player.isCollidingWith(entity)) {
+                            if (entity.type === 'obstacle') {
+                                this.particleSystem.emit(this.player.x, this.player.y, '#ff0088', 30, 'explosion');
+                                this.cameraShake = 15;
+                                this.setState(GameState.GAME_OVER);
+                                return;
+                            } else if (entity.type === 'shard') {
+                                this.shardsCollected++;
+                                this.score += 150;
+                                this.particleSystem.emit(entity.x, entity.y, '#ffff00', 15, 'collect');
+                                this.entities.splice(i, 1); // Remove shard
+                            }
+                        }
+                    }
+                }
+
+                setState(newState) {
+                    if (this.state === newState) return;
+                    this.state = newState;
+
+                    switch (newState) {
+                        case GameState.LEVEL_COMPLETE:
+                            ui.levelCompleteScreen.style.display = 'block';
+                            setTimeout(() => {
+                                this.levelManager.nextLevel();
+                                this.startLevel();
+                            }, 3000);
+                            break;
+                        case GameState.GAME_OVER:
+                            ui.gameOverScreen.style.display = 'block';
+                            this.updateHighScore();
+                            break;
+                        case GameState.VICTORY:
+                            ui.victoryScreen.style.display = 'flex';
+                            this.updateHighScore();
+                            break;
+                    }
+                }
+
+                updateUI() {
+                    const level = this.levelManager.getCurrentLevel();
+                    ui.level.textContent = this.levelManager.currentLevelIndex + 1;
+                    ui.totalLevels.textContent = this.levelManager.levels.length;
+                    ui.distance.textContent = Math.floor(this.distanceTraveled);
+                    ui.shards.textContent = this.shardsCollected;
+                    ui.score.textContent = this.score;
+                    ui.speed.textContent = level.speed.toFixed(1);
+                    ui.target.textContent = level.distance;
+                    ui.highScoreValue.textContent = this.highScore;
+                    ui.gravityIndicator.textContent = this.player.gravity > 0 ? 'Down' : 'Up';
+                    ui.gravityIndicator.style.color = this.player.gravity > 0 ? '#00d2ff' : '#ff0088';
+
+                    const progress = Math.min(this.distanceTraveled / level.distance, 1);
+                    ui.progressFill.style.width = `${progress * 100}%`;
+                }
+                
+                updateHighScore() {
+                    if (this.score > this.highScore) {
+                        this.highScore = this.score;
+                        localStorage.setItem('gravityFlipHighScore', this.highScore);
+                    }
+                }
+            }
+
+            class LevelManager {
+                constructor(levels) {
+                    this.levels = levels;
+                    this.currentLevelIndex = 0;
+                    this.obstacleCooldown = 0;
+                    this.shardCooldown = 0;
+                }
+
+                getCurrentLevel() {
+                    return this.levels[this.currentLevelIndex];
+                }
+
+                startCurrentLevel() {
+                    this.obstacleCooldown = 0;
+                    this.shardCooldown = 0;
+                }
+
+                nextLevel() {
+                    if (!this.isLastLevel()) {
+                        this.currentLevelIndex++;
+                    }
+                }
+
+                isLastLevel() {
+                    return this.currentLevelIndex >= this.levels.length - 1;
+                }
+
+                generateEntities(entities, distance) {
+                    const level = this.getCurrentLevel();
+                    this.obstacleCooldown -= level.speed / 60;
+                    this.shardCooldown -= level.speed / 60;
+
+                    if (this.obstacleCooldown <= 0) {
+                        this.spawnObstacle(entities, level);
+                        this.obstacleCooldown = 1 / level.obstacleRate;
+                    }
+                    if (this.shardCooldown <= 0) {
+                        this.spawnShard(entities, level);
+                        this.shardCooldown = 1 / level.shardRate;
+                    }
+                }
+
+                spawnObstacle(entities, level) {
+                    const y = Math.random() > 0.5 ? 0 : canvas.height;
+                    const height = 50 + Math.random() * 150;
+                    const width = 20 + Math.random() * 30;
+                    entities.push(new Obstacle(canvas.width + 50, y, width, height));
+                }
+
+                spawnShard(entities, level) {
+                    const y = Math.random() * (canvas.height - 100) + 50;
+                    entities.push(new Shard(canvas.width + 50, y));
+                }
+            }
+
+            class Entity {
+                constructor(x, y, width, height) {
+                    this.x = x;
+                    this.y = y;
+                    this.width = width;
+                    this.height = height;
+                }
+                draw(ctx) { /* To be implemented by subclasses */ }
+                update(deltaTime, speed) {
+                    this.x -= speed;
+                }
+                isCollidingWith(other) {
+                    return (
+                        this.x < other.x + other.width &&
+                        this.x + this.width > other.x &&
+                        this.y < other.y + other.height &&
+                        this.y + this.height > other.y
+                    );
+                }
+            }
+
+            class Player extends Entity {
+                constructor(x, y) {
+                    super(x, y, 30, 30);
+                    this.velocityY = 0;
+                    this.gravity = 0.5;
+                    this.lift = -12;
+                }
+
+                resetForLevel() {
+                    this.y = canvas.height / 2;
+                    this.velocityY = 0;
+                    this.gravity = 0.5;
+                }
+
+                update(deltaTime) {
+                    this.velocityY += this.gravity;
+                    this.y += this.velocityY;
+                    
+                    // Dampen velocity
+                    this.velocityY *= 0.98;
+                }
+
+                draw(ctx) {
+                    ctx.fillStyle = '#32ff7e';
+                    ctx.shadowColor = '#32ff7e';
+                    ctx.shadowBlur = 15;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.shadowBlur = 0;
+                }
+
+                flipGravity() {
+                    this.gravity *= -1;
+                    this.velocityY = this.lift * Math.sign(this.gravity);
+                }
+
+                isOffscreen(canvasHeight) {
+                    return this.y + this.height < 0 || this.y > canvasHeight;
+                }
+            }
+
+            class Obstacle extends Entity {
+                constructor(x, y, width, height) {
+                    super(x, y, width, height);
+                    this.type = 'obstacle';
+                    // If y is 0, it's a top obstacle, otherwise it's a bottom obstacle
+                    if (y === 0) {
+                        this.y = 0;
+                    } else {
+                        this.y = canvas.height - height;
+                    }
+                }
+
+                draw(ctx) {
+                    ctx.fillStyle = '#ff4757';
+                    ctx.shadowColor = '#ff4757';
+                    ctx.shadowBlur = 10;
+                    ctx.fillRect(this.x, this.y, this.width, this.height);
+                    ctx.shadowBlur = 0;
+                }
+            }
+
+            class Shard extends Entity {
+                constructor(x, y) {
+                    super(x, y, 15, 15);
+                    this.type = 'shard';
+                    this.angle = 0;
+                }
+
+                update(deltaTime, speed) {
+                    super.update(deltaTime, speed);
+                    this.angle += 5 * deltaTime;
+                }
+
+                draw(ctx) {
+                    ctx.save();
+                    ctx.translate(this.x + this.width / 2, this.y + this.height / 2);
+                    ctx.rotate(this.angle);
+                    ctx.fillStyle = '#ffff00';
+                    ctx.shadowColor = '#ffff00';
+                    ctx.shadowBlur = 20;
+                    ctx.fillRect(-this.width / 2, -this.height / 2, this.width, this.height);
+                    ctx.restore();
+                }
+            }
+
+            class ParticleSystem {
+                constructor() {
+                    this.particles = [];
+                }
+
+                emit(x, y, color, count, type = 'default') {
+                    for (let i = 0; i < count; i++) {
+                        this.particles.push(new Particle(x, y, color, type));
+                    }
+                }
+
+                update(deltaTime, speed) {
+                    for (let i = this.particles.length - 1; i >= 0; i--) {
+                        const p = this.particles[i];
+                        p.update(deltaTime, speed);
+                        if (p.isDead()) {
+                            this.particles.splice(i, 1);
+                        }
+                    }
+                }
+
+                draw(ctx) {
+                    this.particles.forEach(p => p.draw(ctx));
+                }
+            }
+
+            class Particle {
+                constructor(x, y, color, type) {
+                    this.x = x;
+                    this.y = y;
+                    this.color = color;
+                    this.type = type;
+                    this.size = Math.random() * 5 + 2;
+                    this.lifespan = 1;
+
+                    switch (type) {
+                        case 'explosion':
+                            this.vx = (Math.random() - 0.5) * 10;
+                            this.vy = (Math.random() - 0.5) * 10;
+                            break;
+                        case 'flip':
+                            this.vx = (Math.random() - 0.5) * 4;
+                            this.vy = (Math.random() - 0.5) * 4;
+                            break;
+                        case 'collect':
+                            this.vx = (Math.random() - 0.5) * 3;
+                            this.vy = (Math.random() - 0.5) * 3;
+                            break;
+                        default:
+                            this.vx = -2 - Math.random();
+                            this.vy = (Math.random() - 0.5) * 2;
+                    }
+                }
+
+                update(deltaTime, speed) {
+                    this.x += this.vx - speed; // Move with the world
+                    this.y += this.vy;
+                    this.lifespan -= deltaTime;
+                    this.size *= 0.98;
+                }
+
+                draw(ctx) {
+                    ctx.globalAlpha = this.lifespan > 0 ? this.lifespan : 0;
+                    ctx.fillStyle = this.color;
+                    ctx.shadowColor = this.color;
+                    ctx.shadowBlur = 5;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.globalAlpha = 1.0;
+                    ctx.shadowBlur = 0;
+                }
+
+                isDead() {
+                    return this.lifespan <= 0 || this.size <= 0.5;
+                }
+            }
+
+            // --- Game Initialization ---
+            const game = new Game();
+            game.gameLoop(0);
+        });
+    </script>
+</body>
+</html>

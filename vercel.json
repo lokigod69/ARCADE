@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/game/(.*)", "destination": "/" },
+    { "source": "/dev/tools", "destination": "/" }
+  ]
+}

@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cosmic Runner - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #0a0a1a, #1a0a2e, #2e0a3a);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid #00ff88;
+            border-radius: 10px;
+            box-shadow: 0 0 30px #00ff88;
+            background: #000;
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(180deg, #000011, #000033, #000000);
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff88;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff88;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .high-score {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ffff00;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #ffff00;
+            z-index: 10;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ff88;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ff88;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ff88;
+            text-align: center;
+            z-index: 20;
+            display: none;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0088;
+        }
+
+        .power-up-indicator {
+            position: absolute;
+            top: 60px;
+            left: 20px;
+            color: #ffff00;
+            font-size: 14px;
+            font-weight: bold;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: #00ff88;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            z-index: 100;
+            border: 1px solid #00ff88;
+        }
+
+        #controls h4 {
+            margin: 0 0 5px 0;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Distance: <span id="distance">0</span>m | Score: <span id="score">0</span> | Lives: <span id="lives">3</span></div>
+            <div style="font-size: 14px; margin-top: 5px;">Speed: <span id="speed">1.0</span>x | Fuel: <span id="fuel">100</span>%</div>
+        </div>
+        <div class="high-score" id="highScore">
+            Best: <span id="highScoreValue">0</span>m
+        </div>
+        <div class="power-up-indicator" id="powerUpIndicator"></div>
+        <div id="controls">
+            <h4>Controls</h4>
+            <span><strong>W/S or &uarr;/&darr;</strong> : Move</span><br>
+            <span><strong>Space</strong> : Shoot</span><br>
+            <span><strong>Shift</strong> : Boost</span><br>
+            <span><strong>P</strong> : Pause</span><br>
+            <span><strong>R</strong> : Restart</span>
+        </div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px; font-weight: 100; letter-spacing: 3px;">COSMIC RUNNER</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #00ff88;">
+                Survive the stellar highway.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                Dodge asteroids, fight off drones, and push your limits.<br>
+                How far can you run?
+            </div>
+            <div style="font-size: 14px;">SPACE or CLICK to begin</div>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>MISSION FAILED!</div>
+            <div style="font-size: 20px; margin-top: 15px;">Distance: <span id="finalDistance">0</span>m</div>
+            <div style="font-size: 16px; margin-top: 10px;" id="newRecord"></div>
+            <div style="font-size: 14px; margin-top: 15px;">Press R to restart</div>
+        </div>
+    </div>
+
+<script>
+    // =========================================================================
+    // CONFIGURATION & CONSTANTS
+    // =========================================================================
+    const CONFIG = {
+        CANVAS_WIDTH: 800,
+        CANVAS_HEIGHT: 600,
+        TIMING: {
+            STEP: 1 / 60,
+        },
+        PLAYER: {
+            width: 40, height: 30, maxSpeed: 6,
+            invulnerabilityTime: 3, // seconds
+            trailLength: 8,
+        },
+        FUEL: {
+            max: 100,
+            boostCostPerSec: 18, // 0.3 * 60
+            regenPerSec: 9,      // 0.15 * 60
+        },
+        SPEED: {
+            base: 1.5,
+            boostBonus: 1.5, // max speed becomes 3.0
+            boostAccel: 3,   // 0.05 * 60
+            boostDecel: 1.2, // 0.02 * 60
+        },
+        BULLET: {
+            speed: 10,
+            fireRate: 250, // ms
+            rapidFireRate: 150, // ms
+        },
+        POOLS: {
+            maxStars: 100,
+            maxBullets: 30,
+            maxObstacles: 20,
+            maxEnemies: 15,
+            maxPowerUps: 5,
+            maxParticles: 200,
+            maxExplosions: 20,
+        },
+        POINTS: {
+            ASTEROID: 10,
+            CRYSTAL: 25,
+            SPACE_MINE: 50,
+            DRONE: 20,
+            FIGHTER: 40,
+        },
+        POWER_UPS: {
+            RAPID_FIRE: { color: '#ff0088', duration: 5, name: 'Rapid Fire' },
+            SHIELD: { color: '#0088ff', duration: 6.6, name: 'Shield' },
+            FUEL_BOOST: { color: '#00ff88', duration: 0, name: 'Fuel Boost' },
+            MULTI_SHOT: { color: '#ffff00', duration: 4, name: 'Multi Shot' }
+        }
+    };
+
+    // =========================================================================
+    // SPAWN EVENT DATA
+    // =========================================================================
+    const spawnEvents = [
+        { dist: 100, type: 'obstacle', sub: 'ASTEROID', count: 1 },
+        { dist: 300, type: 'obstacle', sub: 'ASTEROID', count: 2 },
+        { dist: 500, type: 'enemy', sub: 'DRONE', count: 1 },
+        { dist: 700, type: 'powerup', sub: 'FUEL_BOOST', count: 1 },
+        { dist: 900, type: 'obstacle', sub: 'CRYSTAL', count: 1 },
+        { dist: 1100, type: 'enemy', sub: 'DRONE', count: 2 },
+        { dist: 1400, type: 'obstacle', sub: 'ASTEROID', count: 3 },
+        { dist: 1600, type: 'powerup', sub: 'SHIELD', count: 1 },
+        { dist: 1800, type: 'enemy', sub: 'FIGHTER', count: 1 },
+        { dist: 2100, type: 'obstacle', sub: 'SPACE_MINE', count: 1 },
+        { dist: 2400, type: 'enemy', sub: 'DRONE', count: 3 },
+        { dist: 2700, type: 'obstacle', sub: ['ASTEROID', 'CRYSTAL'], count: 4 },
+        { dist: 3000, type: 'powerup', sub: 'MULTI_SHOT', count: 1 },
+        { dist: 3300, type: 'enemy', sub: 'FIGHTER', count: 2 },
+        { dist: 3600, type: 'obstacle', sub: 'SPACE_MINE', count: 2 },
+        { dist: 4000, type: 'enemy', sub: ['DRONE', 'FIGHTER'], count: 3 },
+        // Pattern repeats and scales up
+    ];
+
+    // =========================================================================
+    // GAME STATES (Finite State Machine)
+    // =========================================================================
+    const GameState = {
+        START_SCREEN: 'START_SCREEN',
+        PLAYING: 'PLAYING',
+        PAUSED: 'PAUSED',
+        GAME_OVER: 'GAME_OVER',
+    };
+
+    // =========================================================================
+    // UI MANAGER
+    // =========================================================================
+    class UIManager {
+        constructor() {
+            this.distance = document.getElementById('distance');
+            this.score = document.getElementById('score');
+            this.lives = document.getElementById('lives');
+            this.speed = document.getElementById('speed');
+            this.fuel = document.getElementById('fuel');
+            this.highScore = document.getElementById('highScoreValue');
+            this.powerUpIndicator = document.getElementById('powerUpIndicator');
+            this.startScreen = document.getElementById('startScreen');
+            this.gameOverScreen = document.getElementById('gameOver');
+            this.finalDistance = document.getElementById('finalDistance');
+            this.newRecord = document.getElementById('newRecord');
+        }
+
+        update(game) {
+            this.distance.textContent = Math.floor(game.distance);
+            this.score.textContent = game.score;
+            this.lives.textContent = game.lives;
+            this.speed.textContent = (game.gameSpeed / CONFIG.SPEED.base).toFixed(1);
+            this.fuel.textContent = Math.floor(game.fuel);
+            this.highScore.textContent = game.highScore;
+
+            if (game.player.powerUp) {
+                const timeLeft = Math.ceil(game.player.powerUpTime);
+                const powerUpName = CONFIG.POWER_UPS[game.player.powerUp].name;
+                this.powerUpIndicator.textContent = `${powerUpName}: ${timeLeft}s`;
+                this.powerUpIndicator.style.display = 'block';
+            } else {
+                this.powerUpIndicator.style.display = 'none';
+            }
+        }
+
+        showScreen(state, game) {
+            this.startScreen.style.display = 'none';
+            this.gameOverScreen.style.display = 'none';
+
+            switch (state) {
+                case GameState.START_SCREEN:
+                    this.startScreen.style.display = 'block';
+                    this.highScore.textContent = game.highScore;
+                    break;
+                case GameState.GAME_OVER:
+                    this.finalDistance.textContent = Math.floor(game.distance);
+                    if (game.distance > game.highScore) {
+                        this.newRecord.textContent = 'NEW RECORD!';
+                        this.newRecord.style.color = '#ffff00';
+                    } else {
+                        this.newRecord.textContent = '';
+                    }
+                    this.gameOverScreen.style.display = 'block';
+                    break;
+            }
+        }
+    }
+
+    // =========================================================================
+    // ENTITY CLASSES
+    // =========================================================================
+    class Entity {
+        constructor(x, y) { this.x = x; this.y = y; this.toRemove = false; }
+        update(dt, game) {}
+        render(ctx, game) {}
+    }
+
+    class Player extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.w = CONFIG.PLAYER.width;
+            this.h = CONFIG.PLAYER.height;
+            this.dy = 0;
+            this.powerUp = null;
+            this.powerUpTime = 0;
+            this.invulnerableTime = 0;
+            this.trail = [];
+        }
+
+        update(dt, game) {
+            if (this.powerUpTime > 0) {
+                this.powerUpTime -= dt;
+                if (this.powerUpTime <= 0) this.powerUp = null;
+            }
+            if (this.invulnerableTime > 0) this.invulnerableTime -= dt;
+
+            if (game.input.isDown('w') || game.input.isDown('arrowup')) {
+                this.dy = Math.max(this.dy - 0.6, -CONFIG.PLAYER.maxSpeed);
+            }
+            if (game.input.isDown('s') || game.input.isDown('arrowdown')) {
+                this.dy = Math.min(this.dy + 0.6, CONFIG.PLAYER.maxSpeed);
+            }
+
+            this.y += this.dy;
+            this.dy *= 0.92;
+            this.y = Math.max(0, Math.min(CONFIG.CANVAS_HEIGHT - this.h, this.y));
+
+            this.trail.push({ x: this.x, y: this.y + this.h / 2 });
+            if (this.trail.length > CONFIG.PLAYER.trailLength) this.trail.shift();
+        }
+
+        render(ctx) {
+            const color = this.powerUp === 'SHIELD' ? '#0088ff' :
+                (this.invulnerableTime > 0 && Math.floor(this.invulnerableTime * 10) % 2) ? '#ff0088' : '#00ff88';
+            ctx.fillStyle = color;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = this.powerUp ? 12 : 3;
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.shadowBlur = 0;
+
+            this.trail.forEach((p, i) => {
+                ctx.fillStyle = `rgba(0, 255, 136, ${i / this.trail.length * 0.4})`;
+                ctx.fillRect(p.x, p.y, 2, 2);
+            });
+        }
+
+        takeDamage(game) {
+            if (this.invulnerableTime > 0 || this.powerUp === 'SHIELD') return;
+            game.lives--;
+            this.invulnerableTime = CONFIG.PLAYER.invulnerabilityTime;
+            game.pool.get('explosions', { x: this.x + this.w / 2, y: this.y + this.h / 2 });
+            if (game.lives <= 0) game.setState(GameState.GAME_OVER);
+        }
+
+        activatePowerUp(type) {
+            if (type === 'FUEL_BOOST') {
+                game.fuel = CONFIG.FUEL.max;
+            } else {
+                this.powerUp = type;
+                this.powerUpTime = CONFIG.POWER_UPS[type].duration;
+            }
+        }
+    }
+    
+    class Bullet extends Entity {
+        constructor(x, y, dx, dy) {
+            super(x, y);
+            this.dx = dx;
+            this.dy = dy;
+            this.w = 8;
+            this.h = 3;
+            this.color = '#00ff88';
+        }
+
+        update(dt, game) {
+            this.x += this.dx * dt * 60;
+            this.y += this.dy * dt * 60;
+
+            if (this.x > CONFIG.CANVAS_WIDTH || this.x < 0 || this.y < 0 || this.y > CONFIG.CANVAS_HEIGHT) {
+                this.toRemove = true;
+            }
+        }
+
+        render(ctx) {
+            ctx.fillStyle = this.color;
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+        }
+    }
+
+    class Obstacle extends Entity {
+        constructor(x, y, type) {
+            super(x, y);
+            this.type = type;
+            this.w = 25 + Math.random() * 25;
+            this.h = this.w;
+            this.rotation = 0;
+            this.health = 1;
+            this.maxHealth = 1;
+        }
+
+        update(dt, game) {
+            this.x -= game.gameSpeed * dt * 60;
+            this.rotation += 0.01;
+
+            if (this.x + this.w < 0) {
+                this.toRemove = true;
+            }
+
+            // Check player collision
+            if (game.player.x < this.x + this.w &&
+                game.player.x + game.player.w > this.x &&
+                game.player.y < this.y + this.h &&
+                game.player.y + game.player.h > this.y) {
+                
+                game.player.takeDamage(game);
+            }
+        }
+
+        render(ctx) {
+            ctx.save();
+            ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+            ctx.rotate(this.rotation);
+            
+            const color = CONFIG.POINTS[this.type].color;
+            
+            ctx.fillStyle = color;
+            ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+            ctx.restore();
+        }
+    }
+
+    class Enemy extends Entity {
+        constructor(x, y, type) {
+            super(x, y);
+            this.type = type;
+            this.w = 25;
+            this.h = 20;
+            this.health = CONFIG.POINTS[type].health;
+            this.maxHealth = this.health;
+            this.dx = -CONFIG.POINTS[type].speed - CONFIG.SPEED.base * 0.5;
+            this.dy = (Math.random() - 0.5) * 1;
+            this.lastShot = 0;
+        }
+
+        update(dt, game) {
+            this.x += this.dx * dt * 60;
+            this.y += this.dy * dt * 60;
+            
+            // Keep enemies in bounds
+            if (this.y <= 0 || this.y >= CONFIG.CANVAS_HEIGHT - this.h) {
+                this.dy = -this.dy;
+            }
+            
+            if (this.x + this.w < 0) {
+                this.toRemove = true;
+            }
+
+            // Enemy shooting - much less frequent
+            const now = Date.now();
+            if (now - this.lastShot > 3000 + Math.random() * 4000) {
+                this.lastShot = now;
+                
+                // Shoot at player with less accuracy
+                const dx = game.player.x - this.x + (Math.random() - 0.5) * 100;
+                const dy = game.player.y - this.y + (Math.random() - 0.5) * 100;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                
+                game.entities.bullets.push({
+                    x: this.x,
+                    y: this.y + this.h / 2,
+                    dx: (dx / dist) * 4,
+                    dy: (dy / dist) * 4,
+                    width: 5,
+                    height: 5,
+                    color: '#ff4444',
+                    enemy: true
+                });
+            }
+
+            // Check player collision
+            if (game.player.x < this.x + this.w &&
+                game.player.x + game.player.w > this.x &&
+                game.player.y < this.y + this.h &&
+                game.player.y + game.player.h > this.y) {
+                
+                game.player.takeDamage(game);
+            }
+        }
+
+        render(ctx) {
+            const color = CONFIG.POINTS[this.type].color;
+            const alpha = this.health / this.maxHealth;
+            
+            ctx.fillStyle = color;
+            ctx.globalAlpha = alpha;
+            ctx.fillRect(this.x, this.y, this.w, this.h);
+            ctx.globalAlpha = 1;
+            
+            // Draw health indicator
+            if (this.health < this.maxHealth) {
+                const healthWidth = (this.health / this.maxHealth) * this.w;
+                ctx.fillStyle = '#ff0088';
+                ctx.fillRect(this.x, this.y - 5, this.w, 2);
+                ctx.fillStyle = '#00ff88';
+                ctx.fillRect(this.x, this.y - 5, healthWidth, 2);
+            }
+        }
+    }
+
+    class PowerUp extends Entity {
+        constructor(x, y, type) {
+            super(x, y);
+            this.type = type;
+            this.w = 25;
+            this.h = 25;
+            this.rotation = 0;
+            this.pulse = 0;
+        }
+
+        update(dt, game) {
+            this.x -= game.gameSpeed * dt * 60;
+            this.rotation += 0.08;
+            this.pulse += 0.15;
+            
+            if (this.x + this.w < 0) {
+                this.toRemove = true;
+            }
+
+            // Check player collision
+            if (game.player.x < this.x + this.w &&
+                game.player.x + game.player.w > this.x &&
+                game.player.y < this.y + this.h &&
+                game.player.y + game.player.h > this.y) {
+                
+                game.player.activatePowerUp(this.type);
+                this.toRemove = true;
+            }
+        }
+
+        render(ctx) {
+            ctx.save();
+            ctx.translate(this.x + this.w / 2, this.y + this.h / 2);
+            ctx.rotate(this.rotation);
+            
+            const color = CONFIG.POWER_UPS[this.type].color;
+            const scale = 1 + Math.sin(this.pulse) * 0.15;
+            
+            ctx.fillStyle = color;
+            ctx.scale(scale, scale);
+            ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+            ctx.restore();
+        }
+    }
+
+    // =========================================================================
+    // GAME ORCHESTRATOR
+    // =========================================================================
+    class Game {
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.ui = new UIManager();
+            this.input = new InputHandler();
+            this.init();
+        }
+
+        init(isReset = true) {
+            this.state = GameState.START_SCREEN;
+            this.distance = 0;
+            this.score = 0;
+            this.lives = 3;
+            this.gameSpeed = CONFIG.SPEED.base;
+            this.fuel = CONFIG.FUEL.max;
+            this.highScore = parseInt(localStorage.getItem('cosmicRunnerHighScore') || '0');
+            
+            this.player = new Player(100, CONFIG.CANVAS_HEIGHT / 2);
+            
+            // This will be replaced by a proper pool manager
+            this.entities = {
+                stars: [], bullets: [], obstacles: [], enemies: [], powerUps: [], particles: [], explosions: []
+            };
+
+            for(let i=0; i < CONFIG.POOLS.maxStars; i++) {
+                this.entities.stars.push({
+                    x: Math.random() * CONFIG.CANVAS_WIDTH,
+                    y: Math.random() * CONFIG.CANVAS_HEIGHT,
+                    size: Math.random() * 2 + 1,
+                    speed: Math.random() * 2 + 0.5,
+                    brightness: Math.random()
+                });
+            }
+
+            this.lastShotTime = 0;
+            this.nextSpawnEventIndex = 0;
+            
+            if (isReset) {
+                this.lastTime = 0;
+                this.accumulator = 0;
+                this.ui.showScreen(this.state, this);
+            }
+        }
+        
+        setState(state) {
+            if (this.state === state) return;
+            this.state = state;
+            this.ui.showScreen(state, this);
+        }
+
+        start() {
+            if (this.state !== GameState.START_SCREEN) return;
+            this.reset(false); // Soft reset without screen flicker
+            this.setState(GameState.PLAYING);
+        }
+
+        reset(isFullReset = true) {
+            if (this.distance > this.highScore) {
+                this.highScore = Math.floor(this.distance);
+                localStorage.setItem('cosmicRunnerHighScore', this.highScore);
+            }
+            this.init(isFullReset);
+        }
+
+        handleInput(dt) {
+            if (this.input.isDown(' ') && this.state === GameState.PLAYING) this.shoot();
+
+            if (this.input.isDown('shift') && this.fuel > 0) {
+                this.gameSpeed = Math.min(this.gameSpeed + CONFIG.SPEED.boostAccel * dt, CONFIG.SPEED.base + CONFIG.SPEED.boostBonus);
+                this.fuel = Math.max(0, this.fuel - CONFIG.FUEL.boostCostPerSec * dt);
+            } else {
+                this.gameSpeed = Math.max(this.gameSpeed - CONFIG.SPEED.boostDecel * dt, CONFIG.SPEED.base);
+                if (this.state === GameState.PLAYING) {
+                    this.fuel = Math.min(CONFIG.FUEL.max, this.fuel + CONFIG.FUEL.regenPerSec * dt);
+                }
+            }
+        }
+
+        shoot() {
+            const now = performance.now();
+            const fireRate = this.player.powerUp === 'RAPID_FIRE' ? CONFIG.BULLET.rapidFireRate : CONFIG.BULLET.fireRate;
+            if (now - this.lastShotTime < fireRate) return;
+            this.lastShotTime = now;
+
+            // Simplified - will be replaced by pool.get('bullets', ...)
+            if (this.player.powerUp === 'MULTI_SHOT') {
+                 for (let i = -1; i <= 1; i++) {
+                    this.entities.bullets.push({ x: this.player.x + this.player.w, y: this.player.y + this.player.h/2 + i*12, dx: 10, dy: i*1.5, toRemove:false });
+                 }
+            } else {
+                this.entities.bullets.push({ x: this.player.x + this.player.w, y: this.player.y + this.player.h/2, dx: 10, dy: 0, toRemove:false });
+            }
+        }
+
+        checkSpawns() {
+            const event = spawnEvents[this.nextSpawnEventIndex];
+            if (event && this.distance >= event.dist) {
+                // In a real implementation, this would call the object pool to spawn entities
+                console.log(`SPAWN: ${event.type} at ${this.distance}m`);
+                this.nextSpawnEventIndex++;
+                // If we run out of events, loop and scale them
+                if (this.nextSpawnEventIndex >= spawnEvents.length) {
+                    this.nextSpawnEventIndex = 0;
+                    spawnEvents.forEach(e => e.dist += 5000); // Increase distance for next wave
+                }
+            }
+        }
+
+        update(dt) {
+            if (this.state !== GameState.PLAYING) return;
+
+            this.distance += this.gameSpeed * 0.5 * dt * 60; // Scale distance with speed and dt
+            this.handleInput(dt);
+            this.checkSpawns();
+
+            this.player.update(dt, this);
+
+            // Update all entities
+            this.entities.stars.forEach(s => {
+                s.x -= s.speed * this.gameSpeed * dt * 60;
+                if (s.x < 0) { s.x = CONFIG.CANVAS_WIDTH; s.y = Math.random() * CONFIG.CANVAS_HEIGHT; }
+            });
+            
+            for (let i = this.entities.bullets.length - 1; i >= 0; i--) {
+                const b = this.entities.bullets[i];
+                b.x += b.dx;
+                if (b.x > CONFIG.CANVAS_WIDTH) this.entities.bullets.splice(i, 1);
+            }
+            
+            // Collision detection would go here
+
+            this.ui.update(this);
+        }
+
+        render() {
+            this.ctx.fillStyle = '#000011';
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            this.entities.stars.forEach(s => {
+                this.ctx.fillStyle = `rgba(255, 255, 255, ${s.brightness})`;
+                this.ctx.fillRect(s.x, s.y, s.size, s.size);
+            });
+
+            this.player.render(this.ctx);
+            
+            this.entities.bullets.forEach(b => {
+                this.ctx.fillStyle = '#00ff88';
+                this.ctx.fillRect(b.x, b.y, 8, 3);
+            });
+
+            if (this.state === GameState.PAUSED) {
+                this.ctx.fillStyle = 'rgba(0,0,0,0.7)'; this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+                this.ctx.fillStyle = '#ffff00'; this.ctx.font = '48px Courier New'; this.ctx.textAlign = 'center';
+                this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+            }
+        }
+
+        loop(currentTime) {
+            if (!this.lastTime) this.lastTime = currentTime;
+            const deltaTime = (currentTime - this.lastTime) / 1000;
+            this.lastTime = currentTime;
+            this.accumulator += deltaTime;
+
+            while (this.accumulator >= CONFIG.TIMING.STEP) {
+                this.update(CONFIG.TIMING.STEP);
+                this.accumulator -= CONFIG.TIMING.STEP;
+            }
+            this.render();
+            requestAnimationFrame(this.loop.bind(this));
+        }
+    }
+    
+    // =========================================================================
+    // INPUT HANDLER
+    // =========================================================================
+    class InputHandler {
+        constructor() {
+            this.keys = new Set();
+            document.addEventListener('keydown', e => this.keys.add(e.key.toLowerCase()));
+            document.addEventListener('keyup', e => this.keys.delete(e.key.toLowerCase()));
+        }
+        isDown(key) {
+            return this.keys.has(key);
+        }
+    }
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    const canvas = document.getElementById('gameCanvas');
+    const game = new Game(canvas);
+    
+    document.addEventListener('keydown', e => {
+        const key = e.key.toLowerCase();
+        if (key === ' ' || key === 'enter') {
+            e.preventDefault();
+            if (game.state === GameState.START_SCREEN) game.start();
+        }
+        if (key === 'p' && (game.state === GameState.PLAYING || game.state === GameState.PAUSED)) {
+            game.setState(game.state === GameState.PLAYING ? GameState.PAUSED : GameState.PLAYING);
+        }
+        if (key === 'r' && game.state === GameState.GAME_OVER) {
+            game.reset();
+        }
+    });
+    canvas.addEventListener('click', () => {
+        if (game.state === GameState.START_SCREEN) game.start();
+    });
+    
+    game.loop(0);
+</script>
+</body>
+</html>

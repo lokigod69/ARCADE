@@ -1,0 +1,911 @@
+<!-- Origami Rift - Refactored with production-ready architecture, entity systems, and scalable level design -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Origami Rift - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #2d1b1b, #3d2a2a, #1a0f0f);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid;
+            border-image: linear-gradient(45deg, #ff7f7f, #f5f5dc) 1;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 127, 127, 0.3);
+            background: #000;
+            animation: paperFold 4s ease-in-out infinite;
+        }
+
+        @keyframes paperFold {
+            0%, 100% { 
+                box-shadow: 0 0 30px rgba(255, 127, 127, 0.3);
+                transform: scale(1);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(245, 245, 220, 0.4);
+                transform: scale(1.001);
+            }
+            75% {
+                transform: scale(0.999);
+            }
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(135deg, #f5f5dc, #fff8dc, #faf0e6);
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #8b4513;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 127, 127, 0.5);
+            z-index: 10;
+            text-align: center;
+        }
+
+        .level-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #ff7f7f;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #ff7f7f;
+            z-index: 10;
+        }
+
+        .paper-integrity {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 8px;
+            background: rgba(139, 69, 19, 0.3);
+            border: 2px solid #ff7f7f;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .integrity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff7f7f, #f5f5dc);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px #ff7f7f;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b0000;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #8b0000;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(245, 245, 220, 0.95);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #8b0000;
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b4513;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff7f7f;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(245, 245, 220, 0.95);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #ff7f7f;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #8b4513;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 15px rgba(255, 127, 127, 0.8);
+            text-align: center;
+            z-index: 20;
+            background: rgba(245, 245, 220, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #ff7f7f;
+        }
+
+        .crease-indicator {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #ff69b4;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #ff69b4;
+            z-index: 10;
+        }
+
+        .paper-integrity {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 8px;
+            background: rgba(139, 69, 19, 0.3);
+            border: 2px solid #ff7f7f;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .integrity-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff7f7f, #f5f5dc);
+            transition: width 0.3s ease;
+            box-shadow: 0 0 8px #ff7f7f;
+        }
+
+        /* New styles for victory screen */
+        .level-complete#victoryScreen {
+            display: none;
+            border-color: #ffd700;
+            color: #8b4513;
+        }
+
+        .level-complete#victoryScreen h1 {
+            font-size: 36px;
+            margin-bottom: 10px;
+            font-weight: 100;
+            letter-spacing: 3px;
+        }
+
+        .level-complete#victoryScreen p {
+            font-size: 16px;
+            margin-bottom: 15px;
+            color: #ff7f7f;
+        }
+
+        .level-complete#victoryScreen .next-level {
+            font-size: 14px;
+            margin-top: 10px;
+        }
+
+        /* Boss UI styles */
+        #bossUI {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: #ffd700;
+            font-size: 16px;
+            font-weight: bold;
+            z-index: 10;
+            display: none;
+        }
+
+        .focus-meter-container {
+            width: 200px;
+            height: 20px;
+            background: rgba(255, 215, 0, 0.3);
+            border: 2px solid #ffd700;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .focus-meter-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00ff00, #ffd700);
+            transition: width 0.3s ease;
+        }
+
+        .sequence-display {
+            font-size: 14px;
+            color: #fff;
+            text-shadow: 0 0 5px rgba(0, 255, 0, 0.7);
+        }
+
+        .fold-icon {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            margin-right: 2px;
+        }
+
+        .fold-icon.vertical {
+            background: #00ff00;
+        }
+
+        .fold-icon.horizontal {
+            background: #0077ff;
+        }
+
+        .fold-icon.correct {
+            background: #00ff00;
+        }
+
+        .fold-icon.incorrect {
+            background: #ff0000;
+        }
+
+        .fold-icon.pending {
+            background: #ffff00;
+        }
+
+        /* Tooltip styles */
+        #controls-tooltip {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(245, 245, 220, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff7f7f;
+            color: #8b4513;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            text-align: left;
+            z-index: 100;
+        }
+
+        #controls-tooltip h3 {
+            margin: 0 0 10px 0;
+            font-weight: bold;
+            text-shadow: 0 0 5px #ff7f7f;
+        }
+
+        #controls-tooltip ul {
+            margin: 0;
+            padding: 0;
+            list-style: none;
+        }
+
+        #controls-tooltip li {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Level: <span id="level">1</span> | Ink Drops: <span id="inkDrops">0</span>/<span id="totalInkDrops">5</span> | Score: <span id="score">0</span></div>
+        </div>
+        <div class="level-info">
+            <div>Fox Speed: <span id="foxSpeed">2.0</span></div>
+            <div>Folds: <span id="foldCount">0</span></div>
+        </div>
+        <div class="paper-integrity">
+            <div class="integrity-fill" id="integrityFill"></div>
+        </div>
+        <div id="bossUI" style="display: none;">
+            <div class="focus-meter-container">
+                <div id="focusMeterFill" class="focus-meter-fill"></div>
+            </div>
+            <div id="sequenceDisplay" class="sequence-display"></div>
+        </div>
+        <div class="crease-indicator" id="creaseIndicator">
+            TAP lit crease to fold
+        </div>
+        <div id="controls-tooltip" style="position: absolute; bottom: 20px; right: 20px; background: rgba(245, 245, 220, 0.8); padding: 15px; border-radius: 10px; border: 2px solid #ff7f7f; color: #8b4513; font-family: 'Courier New', monospace; font-size: 14px; text-align: left; z-index: 100;">
+            <h3 style="margin: 0 0 10px 0; font-weight: bold; text-shadow: 0 0 5px #ff7f7f;">Controls</h3>
+            <ul style="margin: 0; padding: 0; list-style: none;">
+                <li><strong>Click/Tap:</strong> Fold Universe</li>
+                <li><strong>P:</strong> Pause</li>
+                <li><strong>R:</strong> Restart</li>
+            </ul>
+        </div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px; font-weight: 100; letter-spacing: 3px;">ORIGAMI RIFT</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #ff7f7f;">
+                Bend the world. Bridge the void.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                A lone paper fox skates across cosmic parchment.<br>
+                Tap lit crease lines to fold reality itself.<br>
+                Collect ink drops before the page tears away!
+            </div>
+            <div style="font-size: 14px;">TAP SPACE or CLICK to begin</div>
+        </div>
+        <div class="level-complete" id="levelComplete">
+            <div>PAPER MASTERY!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Level <span id="completedLevel">1</span> Complete</div>
+            <div style="font-size: 16px; margin-top: 10px;">Bonus: <span id="levelBonus">0</span></div>
+            <div style="font-size: 14px; margin-top: 10px;">Next sheet in 3 seconds...</div>
+        </div>
+        <div id="gameOver" class="game-over-screen">
+            <h1>THE PAGE IS TORN</h1>
+            <p>Your score: <span id="finalScore">0</span></p>
+            <p>Press R to try again</p>
+        </div>
+        <div class="level-complete" id="finalVictoryScreen" style="display: none;">
+            <h1>THE CRANE IS WRITTEN</h1>
+            <p>Its story is complete. The paper world is whole again.</p>
+            <p class="next-level">You have mastered the Origami Rift.</p>
+        </div>
+        <div class="level-complete" id="victoryScreen" style="display: none; border-color: #ffd700; color: #8b4513;">
+            <h1>MASTER FOLDER!</h1>
+            <p style="font-size: 16px;">You bent the page to your will.</p>
+            <p style="font-size: 14px; margin-top: 15px;">Press R to unfold a new journey</p>
+        </div>
+    </div>
+
+<script>
+    // =========================================================================
+    // CONFIGURATION & CONSTANTS
+    // =========================================================================
+    const CONFIG = {
+        TIMING: {
+            STEP: 1 / 60,
+            LEVEL_COMPLETE_DELAY: 3000,
+            FOLD_ANIMATION_DURATION: 0.5, // seconds
+        },
+        PLAYER: {
+            speed: 120, // pixels per second
+            width: 20, height: 15,
+            trailSize: 15,
+        },
+        PAPER: {
+            integrity: 100,
+            foldCost: 15,
+            offScreenPenalty: 20,
+        },
+        SCORE: {
+            inkDrop: 100,
+            bossSequence: 1000,
+        },
+        BOSS: {
+            focusDrainRate: 5, // points per second
+            focusPenalty: 25, // points per wrong fold
+            sequences: [
+                ['vertical', 'horizontal', 'vertical'],
+                ['horizontal', 'horizontal', 'vertical', 'vertical'],
+                ['vertical', 'horizontal', 'vertical', 'horizontal', 'vertical'],
+            ]
+        }
+    };
+
+    // =========================================================================
+    // LEVEL DATA
+    // =========================================================================
+    const LEVELS = [
+        {
+            level: 1, targetInk: 3,
+            creases: [
+                { type: 'vertical', x: 200 }, { type: 'vertical', x: 400 },
+                { type: 'vertical', x: 600 }
+            ],
+            inkDrops: [{ x: 150, y: 200 }, { x: 350, y: 300 }, { x: 550, y: 250 }],
+            hazards: []
+        },
+        {
+            level: 2, targetInk: 4,
+            creases: [
+                { type: 'horizontal', y: 150 }, { type: 'vertical', x: 300 },
+                { type: 'horizontal', y: 400 }, { type: 'vertical', x: 500 }
+            ],
+            inkDrops: [{ x: 100, y: 100 }, { x: 250, y: 200 }, { x: 450, y: 350 }, { x: 650, y: 450 }],
+            hazards: [{ type: 'InkSpill', x: 200, y: 300, radius: 30 }]
+        },
+        {
+            level: 3, isBoss: true, targetInk: 0,
+            creases: [
+                { type: 'vertical', x: 150 }, { type: 'vertical', x: 650 },
+                { type: 'horizontal', y: 150 }, { type: 'horizontal', y: 450 }
+            ],
+            inkDrops: [],
+            hazards: []
+        }
+    ];
+
+    // =========================================================================
+    // GAME STATES (Finite State Machine)
+    // =========================================================================
+    const GameState = {
+        START_SCREEN: 'START_SCREEN',
+        PLAYING: 'PLAYING',
+        FOLDING: 'FOLDING',
+        PAUSED: 'PAUSED',
+        LEVEL_COMPLETE: 'LEVEL_COMPLETE',
+        GAME_OVER: 'GAME_OVER',
+        VICTORY: 'VICTORY',
+        BOSS_BATTLE: 'BOSS_BATTLE',
+    };
+
+    // =========================================================================
+    // UI MANAGER
+    // =========================================================================
+    class UIManager {
+        constructor() {
+            this.level = document.getElementById('level');
+            this.inkDrops = document.getElementById('inkDrops');
+            this.totalInkDrops = document.getElementById('totalInkDrops');
+            this.score = document.getElementById('score');
+            this.foldCount = document.getElementById('foldCount');
+            this.integrityFill = document.getElementById('integrityFill');
+            this.creaseIndicator = document.getElementById('creaseIndicator');
+            this.startScreen = document.getElementById('startScreen');
+            this.levelCompleteScreen = document.getElementById('levelComplete');
+            this.gameOverScreen = document.getElementById('gameOver');
+            this.victoryScreen = document.getElementById('victoryScreen');
+            this.finalVictoryScreen = document.getElementById('finalVictoryScreen');
+            this.completedLevel = document.getElementById('completedLevel');
+            this.finalScore = document.getElementById('finalScore');
+            this.bossUI = document.getElementById('bossUI');
+            this.focusMeterFill = document.getElementById('focusMeterFill');
+            this.sequenceDisplay = document.getElementById('sequenceDisplay');
+        }
+
+        update(game) {
+            this.level.textContent = game.levelData.isBoss ? "FINALE" : game.currentLevel;
+            this.inkDrops.textContent = game.inkDropsCollected;
+            this.totalInkDrops.textContent = game.levelData.targetInk;
+            this.score.textContent = game.score;
+            this.foldCount.textContent = game.foldCount;
+            this.integrityFill.style.width = `${game.paperIntegrity}%`;
+            this.creaseIndicator.style.display = (game.state === GameState.PLAYING && game.activeCrease) ? 'block' : 'none';
+
+            if (game.state === GameState.BOSS_BATTLE) {
+                this.bossUI.style.display = 'block';
+                this.focusMeterFill.style.width = `${game.boss.focus}%`;
+                this.updateSequenceDisplay(game.boss);
+            } else {
+                this.bossUI.style.display = 'none';
+            }
+        }
+
+        updateSequenceDisplay(boss) {
+            this.sequenceDisplay.innerHTML = 'Follow the Folds: ';
+            const sequence = boss.sequences[boss.currentSequenceIndex];
+            sequence.forEach((type, i) => {
+                const span = document.createElement('span');
+                span.className = `fold-icon ${type}`;
+                if (i < boss.playerSequence.length) {
+                    span.classList.add(boss.playerSequence[i] === type ? 'correct' : 'incorrect');
+                } else {
+                    span.classList.add('pending');
+                }
+                this.sequenceDisplay.appendChild(span);
+            });
+        }
+
+        showScreen(state, game) {
+            [this.startScreen, this.levelCompleteScreen, this.gameOverScreen, this.victoryScreen, this.finalVictoryScreen].forEach(s => s.style.display = 'none');
+            switch (state) {
+                case GameState.START_SCREEN: this.startScreen.style.display = 'block'; break;
+                case GameState.LEVEL_COMPLETE:
+                    this.completedLevel.textContent = game.currentLevel;
+                    this.levelCompleteScreen.style.display = 'block'; break;
+                case GameState.GAME_OVER:
+                    this.finalScore.textContent = game.score;
+                    this.gameOverScreen.style.display = 'block'; break;
+                case GameState.VICTORY: this.finalVictoryScreen.style.display = 'block'; break;
+            }
+        }
+    }
+    
+    // =========================================================================
+    // ENTITY & HELPER CLASSES
+    // =========================================================================
+    class Entity {
+        constructor(x, y) { this.x = x; this.y = y; this.toRemove = false; }
+        update(dt, game) {}
+        render(ctx, game) {}
+        transform(crease) {
+            if (crease.type === 'vertical' && this.x > crease.x) {
+                this.x = crease.x - (this.x - crease.x);
+            } else if (crease.type === 'horizontal' && this.y > crease.y) {
+                this.y = crease.y - (this.y - crease.y);
+            }
+        }
+    }
+
+    class Fox extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.w = CONFIG.PLAYER.width; this.h = CONFIG.PLAYER.height;
+            this.trail = [];
+        }
+
+        update(dt, game) {
+            this.x += CONFIG.PLAYER.speed * dt;
+            this.trail.push({ x: this.x + this.w / 2, y: this.y + this.h / 2 });
+            if (this.trail.length > CONFIG.PLAYER.trailSize) this.trail.shift();
+
+            if (this.x > game.canvas.width + this.w) {
+                game.handleFoxOffScreen();
+            }
+
+            game.entities.inkDrops.forEach(drop => {
+                if (Math.hypot(this.x - drop.x, this.y - drop.y) < 20) {
+                    drop.toRemove = true;
+                    game.collectInkDrop();
+                }
+            });
+
+            game.entities.hazards.forEach(hazard => {
+                if (hazard.checkCollision(this)) {
+                    game.setState(GameState.GAME_OVER);
+                }
+            });
+        }
+        
+        render(ctx) {
+            this.trail.forEach((p, i) => {
+                const alpha = i / this.trail.length;
+                ctx.fillStyle = `rgba(255, 127, 127, ${alpha * 0.4})`;
+                ctx.fillRect(p.x - 2, p.y - 2, 4, 4);
+            });
+            ctx.fillStyle = '#ff7f7f'; ctx.strokeStyle = '#8b4513'; ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(this.x - this.w / 2, this.y + this.h / 2);
+            ctx.lineTo(this.x + this.w / 2, this.y);
+            ctx.lineTo(this.x - this.w / 2, this.y - this.h / 2);
+            ctx.closePath();
+            ctx.fill(); ctx.stroke();
+        }
+
+        reset() {
+            this.x = 50; this.y = 300; this.trail = [];
+        }
+    }
+
+    class InkDrop extends Entity {
+        constructor(x, y) { super(x, y); this.shimmer = Math.random() * Math.PI * 2; }
+        update(dt) { this.shimmer += 5 * dt; }
+        render(ctx) {
+            const size = 6 + Math.sin(this.shimmer) * 2;
+            ctx.fillStyle = '#4169e1'; ctx.shadowColor = '#4169e1'; ctx.shadowBlur = 12;
+            ctx.beginPath(); ctx.arc(this.x, this.y, size, 0, Math.PI * 2); ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+    }
+
+    class Hazard extends Entity {
+        checkCollision(fox) { return false; }
+    }
+    
+    class InkSpill extends Hazard {
+        constructor(x, y, radius) { super(x, y); this.radius = radius; }
+        checkCollision(fox) { return Math.hypot(fox.x - this.x, fox.y - this.y) < this.radius; }
+        render(ctx) {
+            const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.radius);
+            gradient.addColorStop(0, 'rgba(25, 25, 112, 0.8)');
+            gradient.addColorStop(1, 'rgba(25, 25, 112, 0)');
+            ctx.fillStyle = gradient;
+            ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
+        }
+    }
+    
+    class UnwrittenCrane extends Entity {
+        constructor() {
+            super(400, 300);
+            this.sequences = CONFIG.BOSS.sequences;
+            this.currentSequenceIndex = 0;
+            this.playerSequence = [];
+            this.focus = 100;
+            this.state = 'IDLE'; // IDLE, PRESENTING, AWAITING, COMPLETE
+            this.idleTimer = 0;
+        }
+
+        update(dt, game) {
+            if (this.state === 'AWAITING') {
+                this.focus -= CONFIG.BOSS.focusDrainRate * dt;
+                if (this.focus <= 0) {
+                    game.setState(GameState.GAME_OVER);
+                }
+            }
+        }
+
+        render(ctx) {
+            // Simple representation of the crane
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.5)';
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 3;
+            ctx.shadowColor = '#ffd700';
+            ctx.shadowBlur = 20;
+
+            ctx.beginPath();
+            ctx.moveTo(0, -50);
+            ctx.lineTo(30, -20);
+            ctx.lineTo(80, 20);
+            ctx.lineTo(30, 20);
+            ctx.lineTo(0, 50);
+            ctx.lineTo(-30, 20);
+            ctx.lineTo(-80, 20);
+            ctx.lineTo(-30, -20);
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+            ctx.restore();
+        }
+
+        startSequence() {
+            this.state = 'AWAITING';
+            this.playerSequence = [];
+        }
+
+        receiveFold(type, game) {
+            if (this.state !== 'AWAITING') return;
+
+            this.playerSequence.push(type);
+            const correctSequence = this.sequences[this.currentSequenceIndex];
+            const lastFoldIndex = this.playerSequence.length - 1;
+
+            if (this.playerSequence[lastFoldIndex] !== correctSequence[lastFoldIndex]) {
+                this.focus -= CONFIG.BOSS.focusPenalty;
+                this.playerSequence = []; // Reset on wrong fold
+                if (this.focus <= 0) game.setState(GameState.GAME_OVER);
+                return;
+            }
+
+            if (this.playerSequence.length === correctSequence.length) {
+                this.completeSequence(game);
+            }
+        }
+
+        completeSequence(game) {
+            game.score += CONFIG.SCORE.bossSequence;
+            this.currentSequenceIndex++;
+            if (this.currentSequenceIndex >= this.sequences.length) {
+                this.state = 'COMPLETE';
+                game.setState(GameState.VICTORY);
+            } else {
+                this.state = 'IDLE';
+                this.playerSequence = [];
+                // Small delay before next sequence
+                setTimeout(() => this.startSequence(), 2000);
+            }
+        }
+    }
+
+    // =========================================================================
+    // GAME ORCHESTRATOR
+    // =========================================================================
+    class Game {
+        constructor(canvas) {
+            this.canvas = canvas; this.ctx = canvas.getContext('2d');
+            this.ui = new UIManager(); this.mousePos = { x: 0, y: 0 };
+            this.init();
+        }
+
+        init() {
+            this.state = GameState.START_SCREEN;
+            this.currentLevel = 1; this.score = 0;
+            this.paperIntegrity = CONFIG.PAPER.integrity; this.foldCount = 0;
+            this.player = new Fox(50, 300);
+            this.entities = { inkDrops: [], hazards: [], particles: [] };
+            this.creases = []; this.activeCrease = null;
+            this.foldAnimation = null;
+            this.boss = null;
+            this.lastTime = 0; this.accumulator = 0;
+        }
+        
+        setState(state) {
+            this.state = state;
+            if (state === GameState.BOSS_BATTLE && !this.boss) {
+                this.boss = new UnwrittenCrane();
+                this.boss.startSequence();
+            }
+            this.ui.showScreen(state, this);
+        }
+
+        loadLevel(levelNum) {
+            this.levelData = LEVELS.find(l => l.level === levelNum);
+            if (!this.levelData) { this.setState(GameState.VICTORY); return; }
+
+            if (this.levelData.isBoss) {
+                this.setState(GameState.BOSS_BATTLE);
+            }
+
+            this.inkDropsCollected = 0; this.foldCount = 0;
+            this.creases = this.levelData.creases.map((c, id) => ({...c, id, used: false, type: c.type, x: c.x, y: c.y}));
+            this.entities.inkDrops = this.levelData.inkDrops.map(d => new InkDrop(d.x, d.y));
+            this.entities.hazards = []; // Simplified for now
+        }
+
+        start() {
+            this.currentLevel = 1; this.score = 0; this.paperIntegrity = 100;
+            this.startNewLevel();
+            this.setState(GameState.PLAYING);
+        }
+
+        startNewLevel() {
+            this.player.reset(); this.loadLevel(this.currentLevel);
+        }
+
+        nextLevel() {
+            if (this.currentLevel >= LEVELS.length) { this.setState(GameState.VICTORY); return; }
+            this.currentLevel++;
+            this.startNewLevel();
+            const nextLevelData = LEVELS.find(l => l.level === this.currentLevel);
+            if (nextLevelData && nextLevelData.isBoss) {
+                this.setState(GameState.BOSS_BATTLE);
+            } else {
+                this.setState(GameState.PLAYING);
+            }
+        }
+
+        reset() {
+            this.init(); this.ui.update(this);
+            this.setState(GameState.START_SCREEN);
+        }
+        
+        handleCreaseClick() {
+            if (this.state !== GameState.PLAYING && this.state !== GameState.BOSS_BATTLE) return;
+
+            const clickedCrease = this.creases.find(crease => {
+                const dist = (crease.type === 'vertical')
+                    ? Math.abs(this.mousePos.x - crease.x)
+                    : Math.abs(this.mousePos.y - crease.y);
+                return dist < 20;
+            });
+
+            if (!clickedCrease) return;
+
+            if (this.state === GameState.BOSS_BATTLE) {
+                this.boss.receiveFold(clickedCrease.type, this);
+            } else if (this.state === GameState.PLAYING && clickedCrease === this.activeCrease) {
+                this.initiateFold();
+            }
+        }
+        
+        initiateFold() {
+            this.foldCount++;
+            this.paperIntegrity -= CONFIG.PAPER.foldCost;
+            if (this.paperIntegrity <= 0) { this.setState(GameState.GAME_OVER); return; }
+            
+            this.activeCrease.used = true;
+            this.foldAnimation = { crease: this.activeCrease, progress: 0 };
+            this.setState(GameState.FOLDING);
+
+            // After animation, apply transforms and return to play
+            setTimeout(() => {
+                [this.player, ...Object.values(this.entities).flat()].forEach(e => e.transform(this.activeCrease));
+                const nextCreaseIndex = this.creases.findIndex(c => !c.used);
+                this.activeCrease = (nextCreaseIndex !== -1) ? this.creases[nextCreaseIndex] : null;
+                this.foldAnimation = null;
+                this.setState(GameState.PLAYING);
+            }, CONFIG.TIMING.FOLD_ANIMATION_DURATION * 1000);
+        }
+
+        collectInkDrop() {
+            this.inkDropsCollected++;
+            this.score += CONFIG.SCORE.inkDrop;
+            if (this.inkDropsCollected >= this.levelData.targetInk) {
+                this.setState(GameState.LEVEL_COMPLETE);
+                setTimeout(() => this.nextLevel(), CONFIG.TIMING.LEVEL_COMPLETE_DELAY);
+            }
+        }
+        
+        handleFoxOffScreen() {
+            this.paperIntegrity -= CONFIG.PAPER.offScreenPenalty;
+            if (this.paperIntegrity <= 0) { this.setState(GameState.GAME_OVER); return; }
+            this.player.x = 50; // Reset position
+        }
+
+        update(dt) {
+            if (this.state === GameState.PLAYING) {
+                this.player.update(dt, this);
+            } else if (this.state === GameState.BOSS_BATTLE) {
+                this.boss.update(dt, this);
+            }
+
+            Object.values(this.entities).forEach(arr => {
+                arr.forEach(e => e.update(dt, this));
+                for (let i = arr.length - 1; i >= 0; i--) { if (arr[i].toRemove) arr.splice(i, 1); }
+            });
+            this.ui.update(this);
+        }
+
+        render() {
+            this.ctx.fillStyle = '#faf0e6'; this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+            
+            if (this.state === GameState.BOSS_BATTLE) {
+                this.boss.render(this.ctx);
+            }
+
+            this.creases.forEach(c => {
+                this.ctx.beginPath();
+                const x1 = c.type === 'vertical' ? c.x : 0;
+                const y1 = c.type === 'horizontal' ? c.y : 0;
+                const x2 = c.type === 'vertical' ? c.x : this.canvas.width;
+                const y2 = c.type === 'horizontal' ? c.y : this.canvas.height;
+                this.ctx.moveTo(x1, y1);
+                this.ctx.lineTo(x2, y2);
+
+                let isActive = (this.state === GameState.PLAYING && c === this.activeCrease) || this.state === GameState.BOSS_BATTLE;
+
+                if (c.used) { this.ctx.strokeStyle = 'rgba(139, 69, 19, 0.8)'; this.ctx.lineWidth = 3; }
+                else if (isActive) { this.ctx.strokeStyle = '#ff69b4'; this.ctx.lineWidth = 4; this.ctx.shadowColor = '#ff69b4'; this.ctx.shadowBlur = 15; }
+                else { this.ctx.strokeStyle = 'rgba(139, 69, 19, 0.3)'; this.ctx.lineWidth = 2; }
+                this.ctx.stroke(); this.ctx.shadowBlur = 0;
+            });
+
+            if (this.state !== GameState.BOSS_BATTLE) {
+                 Object.values(this.entities).forEach(arr => arr.forEach(e => e.render(this.ctx)));
+                 this.player.render(this.ctx);
+            }
+
+            if (this.state === GameState.PAUSED) {
+                this.ctx.fillStyle = 'rgba(245,245,220,0.8)'; this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+                this.ctx.fillStyle = '#8b4513'; this.ctx.font = '48px Courier New'; this.ctx.textAlign = 'center';
+                this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+            }
+        }
+
+        loop(currentTime) {
+            if (!this.lastTime) this.lastTime = currentTime;
+            const deltaTime = (currentTime - this.lastTime) / 1000;
+            this.lastTime = currentTime; this.accumulator += deltaTime;
+            while (this.accumulator >= CONFIG.TIMING.STEP) {
+                this.update(CONFIG.TIMING.STEP);
+                this.accumulator -= CONFIG.TIMING.STEP;
+            }
+            this.render(); requestAnimationFrame(this.loop.bind(this));
+        }
+    }
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    const canvas = document.getElementById('gameCanvas');
+    const game = new Game(canvas);
+    
+    canvas.addEventListener('click', e => {
+        if (game.state === GameState.START_SCREEN) game.start();
+        else game.handleCreaseClick();
+    });
+    canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        game.mousePos.x = e.clientX - rect.left;
+        game.mousePos.y = e.clientY - rect.top;
+    });
+    document.addEventListener('keydown', e => {
+        if (e.key.toLowerCase() === 'p') {
+            if (game.state === GameState.PLAYING) game.setState(GameState.PAUSED);
+            else if (game.state === GameState.PAUSED) game.setState(GameState.PLAYING);
+        }
+        if (e.key.toLowerCase() === 'r') {
+             if (game.state === GameState.GAME_OVER || game.state === GameState.VICTORY) game.reset();
+        }
+    });
+
+    game.loop(0);
+</script>
+</body>
+</html>

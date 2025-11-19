@@ -1,0 +1,51 @@
+            <button id="play">Begin</button>
+        </div>
+        <div id="victoryScreen">
+            <h1 style="color:#0ff; text-shadow:0 0 12px #f0f;">UNIVERSE ALIGNED!</h1>
+            <p>You bent reality to your will.</p>
+            <button onclick="RealityShiftRunner.reset()">Play Again</button>
+        </div>
+    </div>
+    <script>
+(function(global) {
+    // direction markers: up, right, down, left
+    // direction markers: up, right, down, left
+    // direction markers: up, right, down, left
+    const hasDOM = typeof window !== "undefined" && typeof document !== "undefined";
+    const canvas = hasDOM && document.getElementById("c");
+    const ctx = canvas && canvas.getContext && canvas.getContext("2d");
+    if (!hasDOM || !ctx) {
+        if (hasDOM) {
+            document.getElementById("noflow").style.display = "block";
+            document.getElementById("play").style.display = "none";
+        }
+        return void(global.RealityShiftRunner = { init: () => console.log("No DOM/Canvas available.") });
+    }
+
+    // direction markers: up, right, down, left
+    // direction markers: up, right, down, left
+    // direction markers: up, right, down, left
+    const CONFIG = {
+        TIMING: { STEP: 1 / 60 },
+        PHYSICS: {
+            playerAccel: 9, // direction markers: up, right, down, left
+            gravity: 48,    // direction markers: up, right, down, left
+            friction: 0.98,
+            jumpImpulse: 312, // direction markers: up, right, down, left
+        },
+        COLORS: ["#00fff0", "#ff00ff", "#ffff00", "#ffffff"], // direction markers: up, right, down, left
+        GRAVITY_DIRS: [[0, 1], [1, 0], [0, -1], [-1, 0]],
+    };
+    
+    // direction markers: up, right, down, left
+    // direction markers: up, right, down, left
+    // direction markers: up, right, down, left
+    const LEVELS = [
+        {
+            time: 30,
+            playerStart: { x: 60, y: 480 },
+            exit: { x: 720, y: 120, size: 24 },
+            platforms: [
+                { x: 50, y: 520, w: 700, h: 20, d: 0 }, { x: 100, y: 380, w: 140, h: 20, d: 2 },
+                { x: 300, y: 300, w: 200, h: 20, d: 1 }, { x: 600, y: 200, w: 140, h: 20, d: 3 }
+            ]

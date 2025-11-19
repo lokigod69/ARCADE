@@ -1,0 +1,889 @@
+<!-- Lunar Tide - Cosmic tidal manipulation game with sophisticated waterline physics -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunar Tide - Arcade 3000</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(45deg, #001122, #003344, #002233);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        .game-container {
+            position: relative;
+            border: 4px solid;
+            border-image: linear-gradient(45deg, #006666, #c0c0c0) 1;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(0, 102, 102, 0.4);
+            background: #000;
+            animation: tidePulse 2s ease-in-out infinite;
+        }
+
+        @keyframes tidePulse {
+            0%, 100% { 
+                box-shadow: 0 0 30px rgba(0, 102, 102, 0.4);
+                transform: translateY(0px);
+            }
+            50% { 
+                box-shadow: 0 0 40px rgba(192, 192, 192, 0.5);
+                transform: translateY(-3px);
+            }
+        }
+
+        canvas {
+            display: block;
+            background: linear-gradient(180deg, #001122 0%, #003366 50%, #004488 100%);
+            border-radius: 6px;
+        }
+
+        .ui {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ffff;
+            z-index: 10;
+            text-align: center;
+        }
+
+        .tide-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #c0c0c0;
+            font-size: 16px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #c0c0c0;
+            z-index: 10;
+        }
+
+        .moon-phase {
+            position: absolute;
+            top: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 300px;
+            height: 8px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #c0c0c0;
+            border-radius: 6px;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        .moon-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #003366, #c0c0c0);
+            transition: width 0.2s ease;
+            box-shadow: 0 0 10px #c0c0c0;
+        }
+
+        .controls {
+            position: absolute;
+            bottom: -80px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #00ffff;
+            font-size: 14px;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ff0088;
+            font-size: 32px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #ff0088;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 30px;
+            border-radius: 15px;
+            border: 3px solid #ff0088;
+        }
+
+        .level-complete {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00ffff;
+            font-size: 28px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #00ffff;
+            text-align: center;
+            z-index: 20;
+            display: none;
+            background: rgba(0, 0, 0, 0.9);
+            padding: 20px;
+            border-radius: 10px;
+            border: 2px solid #00ffff;
+        }
+
+        .start-screen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            text-shadow: 0 0 20px #00ffff;
+            text-align: center;
+            z-index: 20;
+            background: rgba(0, 0, 0, 0.8);
+            padding: 30px;
+            border-radius: 15px;
+            border: 2px solid #00ffff;
+        }
+
+        .tide-indicator {
+            position: absolute;
+            top: 80px;
+            right: 20px;
+            color: #00ffff;
+            font-size: 14px;
+            font-weight: bold;
+            text-shadow: 0 0 10px #00ffff;
+            z-index: 10;
+        }
+
+        .tutorial {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            color: #ffff00;
+            font-size: 12px;
+            font-weight: bold;
+            text-shadow: 0 0 8px #ffff00;
+            z-index: 10;
+            max-width: 200px;
+            line-height: 1.4;
+        }
+
+        .game-over h1, .level-complete h1, .start-screen h1 {
+            font-size: 48px;
+            margin: 0 0 10px 0;
+            text-shadow: 0 0 10px #ffffff;
+        }
+
+        .game-over p, .level-complete p, .start-screen p {
+            font-size: 18px;
+            margin: 5px 0;
+        }
+
+        /* Victory screen specific styles */
+        #victoryScreen {
+            display: none;
+            border-color: #ffff00;
+            color: #ffff00;
+        }
+
+        #victoryScreen h1 {
+            font-size: 42px;
+            margin-bottom: 10px;
+            text-shadow: 0 0 10px #ffff00;
+        }
+
+        #victoryScreen p {
+            font-size: 16px;
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <div class="ui">
+            <div>Distance: <span id="distance">0</span>m | Pearls: <span id="pearls">0</span>/<span id="totalPearls">5</span> | Score: <span id="score">0</span></div>
+        </div>
+        <div class="tide-info">
+            <div>Tide: <span id="tideLevel">50</span>%</div>
+            <div>Moon Pull: <span id="moonPull">0</span>%</div>
+        </div>
+        <div class="moon-phase">
+            <div class="moon-fill" id="moonFill"></div>
+        </div>
+        <div class="tide-indicator" id="tideIndicator">
+            HOLD to pull moon closer
+        </div>
+        <div class="tutorial" id="tutorial">
+            Hold SPACE/CLICK to pull the moon and raise the tide. Release to let it sink. Ride the cosmic breathing!
+        </div>
+        <div class="tutorial" id="tutorialText">
+            Raise the tide to collect the Stardust.
+        </div>
+        <div id="controls" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.7); color: #00ffff; padding: 10px; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 14px; z-index: 100; border: 1px solid #00ffff;">
+            <h4 style="margin: 0 0 5px 0; padding-bottom: 5px; border-bottom: 1px solid #555;">Controls</h4>
+            <span><strong>Mouse Y</strong> : Control Tide Level</span><br>
+            <span><strong>P</strong> : Pause</span><br>
+            <span><strong>R</strong> : Restart</span>
+        </div>
+        <div class="start-screen" id="startScreen">
+            <div style="font-size: 36px; margin-bottom: 20px; font-weight: 100; letter-spacing: 3px;">LUNAR TIDE</div>
+            <div style="font-size: 16px; margin-bottom: 20px; color: #00ffff;">
+                Pull the moon. Command the sea.
+            </div>
+            <div style="font-size: 14px; margin-bottom: 15px;">
+                You are a tiny obsidian moondrop skimming the sea's surface.<br>
+                One tap tugs the moon closer—water swells, lifting you toward the stars.<br>
+                Release, and the moon drifts away—tide sinks, plunging you into coral-shadowed trenches.
+            </div>
+            <div style="font-size: 14px;">HOLD SPACE or CLICK to begin</div>
+        </div>
+        <div class="level-complete" id="levelComplete">
+            <div>TIDAL MASTERY!</div>
+            <div style="font-size: 18px; margin-top: 10px;">Distance: <span id="completedDistance">0</span>m</div>
+            <div style="font-size: 16px; margin-top: 10px;">Bonus: <span id="levelBonus">0</span></div>
+            <div style="font-size: 14px; margin-top: 10px;">Next ocean in 3 seconds...</div>
+        </div>
+        <div class="game-over" id="gameOver">
+            <div>HORIZON SWALLOWED!</div>
+            <div style="font-size: 20px; margin-top: 15px;">Final Distance: <span id="finalDistance">0</span>m</div>
+            <div style="font-size: 14px; margin-top: 15px;">Press R to restart</div>
+        </div>
+        <div class="level-complete" id="victoryScreen" style="display: none; border-color: #ffff00; color: #ffff00;">
+            <h1>TIDES TAMED!</h1>
+            <p style="font-size: 16px;">You pulled the moon until it blinked.</p>
+            <p style="font-size: 14px; margin-top: 15px;">Press R to sail again</p>
+        </div>
+    </div>
+
+    <script>
+    // =========================================================================
+    // CONFIGURATION & CONSTANTS
+    // =========================================================================
+    const CONFIG = {
+        CANVAS_WIDTH: 800,
+        CANVAS_HEIGHT: 600,
+        TIMING: {
+            STEP: 1 / 60, // Fixed 60 FPS update
+            LEVEL_COMPLETE_DELAY: 3000,
+        },
+        POOLS: {
+            MAX_PARTICLES: 150,
+            MAX_RIPPLES: 50,
+            MAX_STARS: 50,
+        },
+        PLAYER: {
+            x: 100, radius: 8, trailSize: 15,
+        },
+        TIDE: {
+            baseLevel: 300, // Mid-point of the screen
+            maxRange: 200,  // Water can go 100px up and 100px down
+            pullRate: 3,    // Rate at which moon pull increases
+            fallRate: 2,    // Rate at which moon pull decreases
+            smoothing: 0.1, // Lerp factor for water movement
+        },
+        GAME: {
+            baseSpeed: 2,
+            speedIncrement: 0.3,
+            maxSpeed: 5,
+        },
+        SCORE: {
+            pearl: 150,
+            ringGate: 100,
+        },
+        PALETTES: {
+            mid: { skyTop: '#001122', skyMid: '#003366', skyBot: '#004488', waterTop: '#003366', waterMid: '#002244', waterBot: '#001122' },
+            high: { skyTop: '#002244', skyMid: '#004466', skyBot: '#006688', waterTop: '#004466', waterMid: '#003355', waterBot: '#002244' },
+            low: { skyTop: '#000011', skyMid: '#001122', skyBot: '#002233', waterTop: '#001122', waterMid: '#000811', waterBot: '#000000' },
+        }
+    };
+
+    // =========================================================================
+    // LEVEL DATA
+    // =========================================================================
+    const LEVELS = [
+        {
+            level: 1, targetPearls: 5,
+            pearlPositions: [{x:250,y:200}, {x:400,y:350}, {x:550,y:250}, {x:700,y:400}, {x:850,y:300}],
+            hazards: []
+        },
+        {
+            level: 2, targetPearls: 7,
+            pearlPositions: [{x:200,y:220}, {x:350,y:380}, {x:500,y:180}, {x:650,y:420}, {x:800,y:300}, {x:950,y:250}, {x:1100,y:350}],
+            hazards: [
+                { type: 'BarnacleArch', x: 400, y: 250, width: 80, height: 40 },
+                { type: 'BarnacleArch', x: 700, y: 350, width: 80, height: 40 },
+            ]
+        },
+        {
+            level: 3, targetPearls: 8,
+            pearlPositions: [{x:200,y:300}, {x:350,y:200}, {x:500,y:400}, {x:650,y:250}, {x:800,y:350}, {x:950,y:220}, {x:1100,y:420}, {x:1250,y:300}],
+            hazards: [
+                { type: 'BarnacleArch', x: 300, y: 200, width: 80, height: 40 },
+                { type: 'RingGate', x: 600, y: 300, radius: 25 },
+                { type: 'BarnacleArch', x: 900, y: 400, width: 80, height: 40 },
+                { type: 'RingGate', x: 1200, y: 300, radius: 25 },
+            ]
+        }
+    ];
+
+    // =========================================================================
+    // GAME STATES (Finite State Machine)
+    // =========================================================================
+    const GameState = {
+        START_SCREEN: 'START_SCREEN',
+        PLAYING: 'PLAYING',
+        PAUSED: 'PAUSED',
+        LEVEL_COMPLETE: 'LEVEL_COMPLETE',
+        GAME_OVER: 'GAME_OVER',
+        VICTORY: 'VICTORY',
+    };
+
+    // =========================================================================
+    // UI MANAGER
+    // =========================================================================
+    class UIManager {
+        constructor() {
+            this.distance = document.getElementById('distance');
+            this.pearls = document.getElementById('pearls');
+            this.totalPearls = document.getElementById('totalPearls');
+            this.score = document.getElementById('score');
+            this.tideLevel = document.getElementById('tideLevel');
+            this.moonPull = document.getElementById('moonPull');
+            this.moonFill = document.getElementById('moonFill');
+            this.tideIndicator = document.getElementById('tideIndicator');
+            this.tutorial = document.getElementById('tutorial');
+            this.startScreen = document.getElementById('startScreen');
+            this.levelCompleteScreen = document.getElementById('levelComplete');
+            this.gameOverScreen = document.getElementById('gameOver');
+            this.victoryScreen = document.getElementById('victoryScreen');
+            this.completedDistance = document.getElementById('completedDistance');
+            this.levelBonus = document.getElementById('levelBonus');
+            this.finalDistance = document.getElementById('finalDistance');
+        }
+
+        update(game) {
+            this.distance.textContent = Math.floor(game.distance);
+            this.pearls.textContent = game.pearlsCollected;
+            this.totalPearls.textContent = game.levelData.targetPearls;
+            this.score.textContent = game.score;
+
+            const tidePercent = Math.floor(((CONFIG.TIDE.baseLevel - game.waterLevel) / (CONFIG.TIDE.maxRange / 2)) * 50 + 50);
+            this.tideLevel.textContent = Math.max(0, Math.min(100, tidePercent));
+            this.moonPull.textContent = Math.floor(game.moonPull);
+            this.moonFill.style.width = `${game.moonPull}%`;
+
+            if (game.isMoonPulling) {
+                this.tideIndicator.textContent = 'TIDE RISING';
+                this.tideIndicator.style.color = '#ffffff';
+            } else {
+                this.tideIndicator.textContent = 'HOLD TO PULL';
+                this.tideIndicator.style.color = '#00ffff';
+            }
+        }
+
+        showScreen(state, game) {
+            this.startScreen.style.display = 'none';
+            this.levelCompleteScreen.style.display = 'none';
+            this.gameOverScreen.style.display = 'none';
+            this.victoryScreen.style.display = 'none';
+
+            switch (state) {
+                case GameState.START_SCREEN:
+                    this.startScreen.style.display = 'block';
+                    break;
+                case GameState.LEVEL_COMPLETE:
+                    this.completedDistance.textContent = Math.floor(game.distance);
+                    this.levelBonus.textContent = '...'; // Can calculate bonus later
+                    this.levelCompleteScreen.style.display = 'block';
+                    break;
+                case GameState.GAME_OVER:
+                    this.finalDistance.textContent = Math.floor(game.distance);
+                    this.gameOverScreen.style.display = 'block';
+                    break;
+                case GameState.VICTORY:
+                    this.victoryScreen.style.display = 'block';
+                    break;
+            }
+        }
+    }
+
+    // =========================================================================
+    // ENTITY CLASSES
+    // =========================================================================
+    class Entity {
+        constructor(x, y) { this.x = x; this.y = y; this.toRemove = false; }
+        update(dt, game) {}
+        render(ctx, game) {}
+    }
+
+    class Moondrop extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.radius = CONFIG.PLAYER.radius;
+            this.trail = [];
+            this.bobOffset = 0;
+        }
+
+        update(dt, game) {
+            // Follow the waterline with a gentle bob
+            this.y = game.waterLevel + Math.sin(this.bobOffset) * 2;
+            this.bobOffset += 5 * dt;
+
+            // Update trail
+            this.trail.push({ x: this.x, y: this.y });
+            if (this.trail.length > CONFIG.PLAYER.trailSize) {
+                this.trail.shift();
+            }
+
+            // Create ripples
+            if (Math.random() < 0.3) {
+                game.addRipple(this.x, game.waterLevel);
+            }
+        }
+
+        render(ctx) {
+            // Trail
+            this.trail.forEach((p, i) => {
+                const alpha = i / this.trail.length;
+                ctx.fillStyle = `rgba(192, 192, 192, ${alpha * 0.6})`;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, this.radius * alpha, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Moondrop body
+            const glowIntensity = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+            ctx.fillStyle = '#2a2a2a';
+            ctx.strokeStyle = '#c0c0c0';
+            ctx.lineWidth = 2;
+            ctx.shadowColor = '#c0c0c0';
+            ctx.shadowBlur = 12 * glowIntensity;
+
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+        
+        reset() {
+            this.x = CONFIG.PLAYER.x;
+            this.y = CONFIG.TIDE.baseLevel;
+            this.trail = [];
+        }
+    }
+
+    class LunarPearl extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.radius = 6;
+            this.glowRadius = 15 + Math.random() * 10;
+            this.pulse = Math.random() * Math.PI * 2;
+        }
+
+        update(dt, game) {
+            this.pulse += 5 * dt;
+            this.x -= game.scrollSpeed * dt * 60; // Keep consistent with frame-based scroll
+            
+            const dx = game.player.x - this.x;
+            const dy = game.player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < this.glowRadius) {
+                this.toRemove = true;
+                game.collectPearl();
+            }
+            
+            if (this.x < -this.glowRadius) this.toRemove = true;
+        }
+        
+        render(ctx) {
+            const pulseIntensity = Math.sin(this.pulse) * 0.3 + 0.7;
+            const glowSize = this.glowRadius * pulseIntensity;
+
+            const gradient = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, glowSize);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0.9)');
+            gradient.addColorStop(0.5, 'rgba(200, 200, 255, 0.6)');
+            gradient.addColorStop(1, 'rgba(100, 100, 255, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, glowSize, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    
+    class Hazard extends Entity {
+        update(dt, game) {
+            this.x -= game.scrollSpeed * dt * 60;
+            if (this.checkCollision(game.player)) {
+                game.setState(GameState.GAME_OVER);
+            }
+            if (this.x < -100) this.toRemove = true;
+        }
+        
+        checkCollision(player) { return false; }
+    }
+
+    class BarnacleArch extends Hazard {
+        constructor(x, y, width, height) {
+            super(x, y);
+            this.width = width;
+            this.height = height;
+        }
+        
+        checkCollision(player) {
+            // A simple but effective collision check for the arch
+            const playerLeft = player.x - player.radius;
+            const playerRight = player.x + player.radius;
+            
+            if (playerRight > this.x && playerLeft < this.x + this.width) {
+                 // Player is horizontally aligned. Check vertical collision.
+                 const playerTop = player.y - player.radius;
+                 const playerBottom = player.y + player.radius;
+                 if (playerTop > this.y + this.height || playerBottom < this.y) {
+                     // Player is above or below the arch, it's a pass.
+                     return false;
+                 }
+                 // Player is at the same vertical level, it's a collision.
+                 return true;
+            }
+            return false;
+        }
+        
+        render(ctx) {
+            ctx.fillStyle = '#8b4513';
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+    
+    class RingGate extends Hazard {
+        constructor(x, y, radius) {
+            super(x,y);
+            this.radius = radius;
+            this.passed = false;
+            this.pulse = 0;
+        }
+        
+        checkCollision(player) {
+            // Ring gates aren't fatal, they are for points.
+            const dx = player.x - this.x;
+            const dy = player.y - this.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (!this.passed && Math.abs(dx) < 2 && dist < this.radius) {
+                this.passed = true;
+                // game.score += CONFIG.SCORE.ringGate // Add this to game logic
+            }
+            return false; // Never fatal
+        }
+
+        render(ctx) {
+            this.pulse += 0.1;
+            const pulseSize = this.radius + Math.sin(this.pulse) * 3;
+            ctx.strokeStyle = this.passed ? '#00ff00' : '#00ffff';
+            ctx.lineWidth = 4;
+            ctx.shadowColor = ctx.strokeStyle;
+            ctx.shadowBlur = 15;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, pulseSize, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+    }
+    
+    // Other effect entities
+    class Ripple extends Entity {
+        constructor(x, y) {
+            super(x, y);
+            this.radius = 0;
+            this.maxRadius = 30 + Math.random() * 20;
+            this.life = 1.0; // 1 to 0
+        }
+        update(dt, game) {
+            this.radius += this.maxRadius * dt;
+            this.life -= 1.5 * dt;
+            if (this.life <= 0) this.toRemove = true;
+        }
+        render(ctx) {
+            ctx.strokeStyle = `rgba(0, 255, 255, ${this.life * 0.6})`;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.stroke();
+        }
+    }
+    
+    class Star extends Entity {
+        constructor() {
+            super(Math.random() * CONFIG.CANVAS_WIDTH, Math.random() * CONFIG.TIDE.baseLevel);
+            this.size = Math.random() * 2 + 0.5;
+            this.brightness = Math.random() * 0.8 + 0.2;
+            this.twinkle = Math.random() * Math.PI * 2;
+        }
+        update(dt, game) {
+            this.x -= this.size * 0.2 * game.scrollSpeed * dt * 60; // Parallax
+            this.twinkle += 5 * dt;
+            if (this.x < -this.size) this.x = CONFIG.CANVAS_WIDTH;
+        }
+        render(ctx, game) {
+            const twinkleIntensity = Math.sin(this.twinkle) * 0.3 + 0.7;
+            const alpha = this.brightness * twinkleIntensity;
+            ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+            ctx.fillRect(this.x, this.y, this.size, this.size);
+            
+            // Reflection
+            if (this.y < game.waterLevel) {
+                const reflectY = game.waterLevel + (game.waterLevel - this.y) * 0.8;
+                ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.3})`;
+                ctx.fillRect(this.x, reflectY, this.size, this.size);
+            }
+        }
+    }
+
+
+    // =========================================================================
+    // GAME ORCHESTRATOR
+    // =========================================================================
+    class Game {
+        constructor(canvas) {
+            this.canvas = canvas;
+            this.ctx = canvas.getContext('2d');
+            this.ui = new UIManager();
+            this.init();
+        }
+
+        init() {
+            this.state = GameState.START_SCREEN;
+            this.currentLevel = 1;
+            this.score = 0;
+            this.distance = 0;
+            this.pearlsCollected = 0;
+            this.scrollSpeed = CONFIG.GAME.baseSpeed;
+            this.levelData = null;
+            
+            this.waterLevel = CONFIG.TIDE.baseLevel;
+            this.moonPull = 0;
+            this.isMoonPulling = false;
+            this.currentPalette = CONFIG.PALETTES.mid;
+
+            this.player = new Moondrop(CONFIG.PLAYER.x, CONFIG.TIDE.baseLevel);
+            this.entities = {
+                pearls: [], hazards: [], effects: [], background: []
+            };
+            
+            for (let i = 0; i < CONFIG.POOLS.MAX_STARS; i++) {
+                this.entities.background.push(new Star());
+            }
+
+            this.lastTime = 0;
+            this.accumulator = 0;
+            this.levelCompleteTimeout = null;
+        }
+
+        setState(newState) {
+            if (this.state === newState) return;
+            // Clear any pending level transitions
+            if (this.levelCompleteTimeout) {
+                clearTimeout(this.levelCompleteTimeout);
+                this.levelCompleteTimeout = null;
+            }
+
+            this.state = newState;
+            this.ui.showScreen(newState, this);
+
+            if (newState === GameState.LEVEL_COMPLETE) {
+                this.levelCompleteTimeout = setTimeout(() => this.nextLevel(), CONFIG.TIMING.LEVEL_COMPLETE_DELAY);
+            }
+        }
+
+        loadLevel(levelNum) {
+            this.levelData = LEVELS.find(l => l.level === levelNum);
+            if (!this.levelData) {
+                this.setState(GameState.VICTORY);
+                return;
+            }
+            this.entities.pearls = this.levelData.pearlPositions.map(p => new LunarPearl(p.x, p.y));
+            this.entities.hazards = this.levelData.hazards.map(h => {
+                if (h.type === 'BarnacleArch') return new BarnacleArch(h.x, h.y, h.width, h.height);
+                if (h.type === 'RingGate') return new RingGate(h.x, h.y, h.radius);
+                return null;
+            }).filter(h => h);
+        }
+
+        start() {
+            this.currentLevel = 1;
+            this.score = 0;
+            this.scrollSpeed = CONFIG.GAME.baseSpeed;
+            this.startNewLevel();
+            this.setState(GameState.PLAYING);
+        }
+
+        startNewLevel() {
+            this.distance = 0;
+            this.pearlsCollected = 0;
+            this.player.reset();
+            this.entities.effects = [];
+            this.loadLevel(this.currentLevel);
+        }
+
+        nextLevel() {
+            if (this.currentLevel >= LEVELS.length) {
+                this.setState(GameState.VICTORY);
+                return;
+            }
+            this.currentLevel++;
+            this.scrollSpeed = Math.min(CONFIG.GAME.maxSpeed, this.scrollSpeed + CONFIG.GAME.speedIncrement);
+            this.startNewLevel();
+            this.setState(GameState.PLAYING);
+        }
+        
+        reset() {
+            this.init();
+            this.ui.update(this);
+            this.setState(GameState.START_SCREEN);
+        }
+
+        collectPearl() {
+            this.pearlsCollected++;
+            this.score += CONFIG.SCORE.pearl;
+            if (this.pearlsCollected >= this.levelData.targetPearls) {
+                this.setState(GameState.LEVEL_COMPLETE);
+            }
+        }
+        
+        addRipple(x, y) {
+            if (this.entities.effects.filter(e => e instanceof Ripple).length < CONFIG.POOLS.MAX_RIPPLES) {
+                this.entities.effects.push(new Ripple(x, y));
+            }
+        }
+
+        update(dt) {
+            if (this.state !== GameState.PLAYING) return;
+            
+            // Update game logic
+            this.distance += this.scrollSpeed * dt * 10;
+            
+            // Update tide physics
+            if (this.isMoonPulling) this.moonPull = Math.min(100, this.moonPull + CONFIG.TIDE.pullRate);
+            else this.moonPull = Math.max(0, this.moonPull - CONFIG.TIDE.fallRate);
+            
+            const targetWaterLevel = CONFIG.TIDE.baseLevel - (this.moonPull / 100 - 0.5) * CONFIG.TIDE.maxRange;
+            this.waterLevel += (targetWaterLevel - this.waterLevel) * CONFIG.TIDE.smoothing;
+
+            // Update palette based on tide
+            const tidePercent = this.moonPull / 100;
+            if (tidePercent > 0.7) this.currentPalette = CONFIG.PALETTES.high;
+            else if (tidePercent < 0.3) this.currentPalette = CONFIG.PALETTES.low;
+            else this.currentPalette = CONFIG.PALETTES.mid;
+
+            // Update all entities
+            this.player.update(dt, this);
+            for (const category in this.entities) {
+                this.entities[category].forEach(entity => entity.update(dt, this));
+                this.entities[category] = this.entities[category].filter(e => !e.toRemove);
+            }
+
+            this.ui.update(this);
+        }
+
+        render() {
+            const p = this.currentPalette;
+            const skyGrad = this.ctx.createLinearGradient(0, 0, 0, this.waterLevel);
+            skyGrad.addColorStop(0, p.skyTop); skyGrad.addColorStop(0.5, p.skyMid); skyGrad.addColorStop(1, p.skyBot);
+            this.ctx.fillStyle = skyGrad;
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+            const waterGrad = this.ctx.createLinearGradient(0, this.waterLevel, 0, this.canvas.height);
+            waterGrad.addColorStop(0, p.waterTop); waterGrad.addColorStop(0.5, p.waterMid); waterGrad.addColorStop(1, p.waterBot);
+            this.ctx.fillStyle = waterGrad;
+            this.ctx.fillRect(0, this.waterLevel, this.canvas.width, this.canvas.height - this.waterLevel);
+
+            this.entities.background.forEach(e => e.render(this.ctx, this));
+            this.entities.hazards.forEach(e => e.render(this.ctx, this));
+            this.entities.pearls.forEach(e => e.render(this.ctx, this));
+            
+            // Shimmering waterline
+            this.ctx.strokeStyle = '#00ffff'; this.ctx.lineWidth = 2; this.ctx.shadowColor = '#00ffff'; this.ctx.shadowBlur = 10;
+            this.ctx.beginPath();
+            for (let x = 0; x < this.canvas.width; x += 10) {
+                this.ctx.lineTo(x, this.waterLevel + Math.sin(x * 0.02 + Date.now() * 0.005) * 2);
+            }
+            this.ctx.stroke();
+            this.ctx.shadowBlur = 0;
+
+            this.player.render(this.ctx, this);
+            this.entities.effects.forEach(e => e.render(this.ctx, this));
+
+            if (this.state === GameState.PAUSED) {
+                this.ctx.fillStyle = 'rgba(0,0,0,0.7)'; this.ctx.fillRect(0,0,this.canvas.width,this.canvas.height);
+                this.ctx.fillStyle = '#00ffff'; this.ctx.font = '48px Courier New'; this.ctx.textAlign = 'center';
+                this.ctx.fillText('PAUSED', this.canvas.width / 2, this.canvas.height / 2);
+            }
+        }
+
+        loop(currentTime) {
+            if (!this.lastTime) this.lastTime = currentTime;
+            const deltaTime = (currentTime - this.lastTime) / 1000;
+            this.lastTime = currentTime;
+            this.accumulator += deltaTime;
+
+            while (this.accumulator >= CONFIG.TIMING.STEP) {
+                this.update(CONFIG.TIMING.STEP);
+                this.accumulator -= CONFIG.TIMING.STEP;
+            }
+            this.render();
+            requestAnimationFrame(this.loop.bind(this));
+        }
+    }
+
+    // =========================================================================
+    // INITIALIZATION
+    // =========================================================================
+    const canvas = document.getElementById('gameCanvas');
+    const game = new Game(canvas);
+    
+    const handlePullStart = (e) => {
+        e.preventDefault();
+        if (game.state === GameState.START_SCREEN) game.start();
+        else if (game.state === GameState.PLAYING) game.isMoonPulling = true;
+    };
+    const handlePullEnd = (e) => {
+        e.preventDefault();
+        if (game.state === GameState.PLAYING) game.isMoonPulling = false;
+    };
+
+    document.addEventListener('keydown', (e) => {
+        if (e.key === ' ') handlePullStart(e);
+        if (e.key.toLowerCase() === 'p') {
+            if (game.state === GameState.PLAYING) game.setState(GameState.PAUSED);
+            else if (game.state === GameState.PAUSED) game.setState(GameState.PLAYING);
+        }
+        if (e.key.toLowerCase() === 'r') {
+             if (game.state === GameState.GAME_OVER || game.state === GameState.VICTORY) game.reset();
+        }
+    });
+    document.addEventListener('keyup', (e) => { if (e.key === ' ') handlePullEnd(e); });
+    canvas.addEventListener('mousedown', handlePullStart);
+    canvas.addEventListener('mouseup', handlePullEnd);
+    canvas.addEventListener('touchstart', handlePullStart, { passive: false });
+    canvas.addEventListener('touchend', handlePullEnd);
+    
+    game.loop(0);
+</script>

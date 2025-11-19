@@ -1,0 +1,640 @@
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+      font-family: 'Courier New', Courier, monospace;
+    }
+    #game-container {
+      position: relative;
+      border: 2px solid #fff;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      background-color: #333;
+    }
+    .ui-layer {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      text-align: center;
+      background-color: rgba(0, 0, 0, 0.7);
+    }
+    .hidden {
+      display: none;
+    }
+    h1 {
+      font-size: 3em;
+      margin-bottom: 20px;
+      text-shadow: 3px 3px #f0f;
+    }
+    p {
+      font-size: 1.2em;
+      margin-bottom: 30px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1.2em;
+      background-color: #fff;
+      color: #000;
+      border: 2px solid #f0f;
+      cursor: pointer;
+      box-shadow: 3px 3px #f0f;
+    }
+    #stats {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      font-size: 1.5em;
+      text-shadow: 2px 2px #000;
+    }
+    #controls-tooltip {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.7);
+      padding: 15px;
+      border-radius: 10px;
+      border: 2px solid #f0f;
+      color: #fff;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 14px;
+      text-align: left;
+      z-index: 100;
+    }
+    #controls-tooltip h3 {
+      margin: 0 0 10px 0;
+      font-weight: bold;
+      text-shadow: 2px 2px #f0f;
+    }
+    #controls-tooltip ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <canvas id="game-canvas"></canvas>
+    <div id="stats">
+        <div id="speed">Speed: 0 km/h</div>
+        <div id="laps">Laps: 0/3</div>
+        <div id="rival-laps" class="hidden">Rival Laps: 0/3</div>
+    </div>
+    <div id="start-screen" class="ui-layer">
+      <h1>VROOM</h1>
+      <p>The ultimate street race is about to begin.<br>Use arrow keys to dodge traffic and reach the finish line.<br>Press Enter to start.</p>
+    </div>
+    <div id="level-transition-screen" class="ui-layer hidden">
+      <h1 id="level-title"></h1>
+      <p id="level-briefing"></p>
+    </div>
+    <div id="game-over-screen" class="ui-layer hidden">
+      <h1>GAME OVER</h1>
+      <p>The streets were too much for you.<br>Press Enter to try again.</p>
+    </div>
+    <div id="victory-screen" class="ui-layer hidden">
+      <h1>VICTORY!</h1>
+      <p>You've beaten the Shadow Racer and become the new champion of the asphalt!<br>Your legend begins now.</p>
+    </div>
+    <div id="controls-tooltip">
+        <h3>Controls</h3>
+        <ul>
+            <li><strong>Up/Down:</strong> Accelerate/Brake</li>
+            <li><strong>Left/Right:</strong> Change Lanes</li>
+            <li><strong>Enter:</strong> Start/Restart</li>
+        </ul>
+    </div>
+  </div>
+  <script>
+    // Vroom Refactored - Class-based, FSM, Data-Driven, Final Boss
+    document.addEventListener('DOMContentLoaded', () => {
+      const canvas = document.getElementById('game-canvas');
+      const ctx = canvas.getContext('2d');
+
+      const container = document.getElementById('game-container');
+      const CONFIG = {
+        WIDTH: 800,
+        HEIGHT: 600,
+        PLAYER_WIDTH: 40,
+        PLAYER_HEIGHT: 60,
+        PLAYER_BASE_SPEED: 2,
+        PLAYER_MAX_SPEED: 10,
+        ACCELERATION: 0.1,
+        FRICTION: 0.05,
+        ROAD_LINE_WIDTH: 10,
+        ROAD_LINE_HEIGHT: 50,
+        ROAD_LINE_GAP: 30,
+        OBSTACLE_WIDTH: 50,
+        OBSTACLE_HEIGHT: 80,
+        LANE_COUNT: 4,
+        LANE_WIDTH: 100,
+        ROAD_MARGIN: 200,
+        RIVAL_SPEED_MULTIPLIER: 0.95,
+        NITRO_DURATION: 3000, // 3 seconds
+        NITRO_SPEED_BOOST: 5,
+      };
+      
+      canvas.width = CONFIG.WIDTH;
+      canvas.height = CONFIG.HEIGHT;
+      container.style.width = `${CONFIG.WIDTH}px`;
+      container.style.height = `${CONFIG.HEIGHT}px`;
+
+      const UIManager = {
+        startScreen: document.getElementById('start-screen'),
+        levelTransitionScreen: document.getElementById('level-transition-screen'),
+        gameOverScreen: document.getElementById('game-over-screen'),
+        victoryScreen: document.getElementById('victory-screen'),
+        stats: document.getElementById('stats'),
+        speedStat: document.getElementById('speed'),
+        lapsStat: document.getElementById('laps'),
+        rivalLapsStat: document.getElementById('rival-laps'),
+        levelTitle: document.getElementById('level-title'),
+        levelBriefing: document.getElementById('level-briefing'),
+
+        show(element) { element.classList.remove('hidden'); },
+        hide(element) { element.classList.add('hidden'); },
+
+        updateStats(player, game) {
+            this.speedStat.textContent = `Speed: ${Math.round(player.speed * 20)} km/h`;
+            const totalLaps = LEVELS[game.currentLevelIndex]?.laps || 1;
+            this.lapsStat.textContent = `Laps: ${game.playerLaps}/${totalLaps}`;
+            if (game.stateMachine.currentState.name === 'BossFight') {
+                this.show(this.rivalLapsStat);
+                this.rivalLapsStat.textContent = `Rival Laps: ${game.rivalLaps}/${totalLaps}`;
+            } else {
+                this.hide(this.rivalLapsStat);
+            }
+        },
+        
+        showLevelTransition(title, briefing, duration = 3000) {
+            return new Promise(resolve => {
+                this.levelTitle.textContent = title;
+                this.levelBriefing.innerHTML = briefing;
+                this.show(this.levelTransitionScreen);
+                setTimeout(() => {
+                    this.hide(this.levelTransitionScreen);
+                    resolve();
+                }, duration);
+            });
+        }
+      };
+
+      class InputHandler {
+        constructor() {
+          this.keys = {};
+          window.addEventListener('keydown', e => this.keys[e.code] = true);
+          window.addEventListener('keyup', e => this.keys[e.code] = false);
+        }
+      }
+
+      class Player {
+        constructor() {
+          this.width = CONFIG.PLAYER_WIDTH;
+          this.height = CONFIG.PLAYER_HEIGHT;
+          this.x = (CONFIG.WIDTH / 2) - (this.width / 2);
+          this.y = CONFIG.HEIGHT - this.height - 20;
+          this.speed = 0;
+          this.dx = 0;
+          this.lane = Math.floor(CONFIG.LANE_COUNT / 2);
+          this.nitroActive = false;
+          this.nitroTimer = 0;
+        }
+
+        update(input) {
+          // Horizontal movement
+          const targetX = CONFIG.ROAD_MARGIN + (this.lane * CONFIG.LANE_WIDTH) + (CONFIG.LANE_WIDTH / 2) - (this.width / 2);
+          this.x += (targetX - this.x) * 0.2;
+
+          // Acceleration/Deceleration
+          if (input.keys['ArrowUp']) {
+            this.speed += CONFIG.ACCELERATION;
+          } else {
+            this.speed -= CONFIG.FRICTION;
+          }
+          
+          if (input.keys['ArrowDown']) {
+              this.speed -= CONFIG.ACCELERATION * 2;
+          }
+
+          let maxSpeed = this.nitroActive ? CONFIG.PLAYER_MAX_SPEED + CONFIG.NITRO_SPEED_BOOST : CONFIG.PLAYER_MAX_SPEED;
+          this.speed = Math.max(0, Math.min(this.speed, maxSpeed));
+
+          // Nitro timer
+          if (this.nitroActive) {
+              this.nitroTimer -= 1000/60; // approx 1 frame
+              if (this.nitroTimer <= 0) {
+                  this.nitroActive = false;
+              }
+          }
+        }
+        
+        activateNitro() {
+            if (!this.nitroActive) {
+                this.nitroActive = true;
+                this.nitroTimer = CONFIG.NITRO_DURATION;
+            }
+        }
+
+        draw(ctx) {
+          ctx.fillStyle = this.nitroActive ? '#f0f' : '#0ff';
+          ctx.fillRect(this.x, this.y, this.width, this.height);
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(this.x + 5, this.y + 5, this.width - 10, 10); // Windshield
+        }
+        
+        reset() {
+            this.x = (CONFIG.WIDTH / 2) - (this.width / 2);
+            this.y = CONFIG.HEIGHT - this.height - 20;
+            this.speed = 0;
+            this.lane = Math.floor(CONFIG.LANE_COUNT / 2);
+            this.nitroActive = false;
+        }
+      }
+      
+      class Obstacle {
+          constructor(lane, speed, type = 'car') {
+              this.width = CONFIG.OBSTACLE_WIDTH;
+              this.height = CONFIG.OBSTACLE_HEIGHT;
+              this.x = CONFIG.ROAD_MARGIN + (lane * CONFIG.LANE_WIDTH) + (CONFIG.LANE_WIDTH / 2) - (this.width / 2);
+              this.y = -this.height;
+              this.speed = speed;
+              this.type = type; // 'car', 'oil', 'barrier', 'nitro'
+              this.color = {
+                  car: `hsl(${Math.random() * 360}, 80%, 60%)`,
+                  oil: '#222',
+                  barrier: '#f00',
+                  nitro: '#ff0'
+              }[type];
+          }
+
+          update(playerSpeed) {
+              this.y += this.speed + playerSpeed;
+          }
+
+          draw(ctx) {
+              ctx.fillStyle = this.color;
+              if (this.type === 'oil') {
+                  ctx.beginPath();
+                  ctx.ellipse(this.x + this.width / 2, this.y + this.height / 2, this.width / 2, this.height / 4, 0, 0, Math.PI * 2);
+                  ctx.fill();
+              } else {
+                  ctx.fillRect(this.x, this.y, this.width, this.height);
+              }
+          }
+      }
+
+      class ShadowRacer extends Obstacle {
+          constructor() {
+              super(1, 0, 'car');
+              this.color = '#800080'; // Purple
+              this.targetLane = 1;
+              this.y = CONFIG.HEIGHT / 2;
+          }
+
+          update(player, obstacles) {
+              // AI Logic: Try to match player's lane but avoid obstacles
+              if (Math.random() < 0.02) { // Decision making interval
+                  let bestLane = player.lane;
+                  const isObstacleInLane = (lane) => obstacles.some(o => o.lane === lane && o.y > this.y - 200 && o.y < this.y);
+                  
+                  if (isObstacleInLane(bestLane)) {
+                      // Find a clear lane
+                      const alternativeLanes = [0, 1, 2, 3].filter(l => l !== bestLane && !isObstacleInLane(l));
+                      if(alternativeLanes.length > 0) {
+                          bestLane = alternativeLanes[Math.floor(Math.random() * alternativeLanes.length)];
+                      }
+                  }
+                  this.targetLane = bestLane;
+              }
+              
+              const targetX = CONFIG.ROAD_MARGIN + (this.targetLane * CONFIG.LANE_WIDTH) + (CONFIG.LANE_WIDTH / 2) - (this.width / 2);
+              this.x += (targetX - this.x) * 0.1; // Smoother lane change
+              
+              // Move based on player speed to stay relative
+              this.y += (player.speed - CONFIG.PLAYER_MAX_SPEED * CONFIG.RIVAL_SPEED_MULTIPLIER);
+              this.y = Math.max(50, Math.min(this.y, CONFIG.HEIGHT - this.height - 50));
+          }
+      }
+
+      class Road {
+        constructor() {
+          this.lines = [];
+          this.yOffset = 0;
+          for (let i = 0; i < (CONFIG.HEIGHT / (CONFIG.ROAD_LINE_HEIGHT + CONFIG.ROAD_LINE_GAP)) + 1; i++) {
+            this.lines.push({ y: i * (CONFIG.ROAD_LINE_HEIGHT + CONFIG.ROAD_LINE_GAP) });
+          }
+        }
+
+        update(playerSpeed) {
+          this.yOffset = (this.yOffset + playerSpeed) % (CONFIG.ROAD_LINE_HEIGHT + CONFIG.ROAD_LINE_GAP);
+        }
+
+        draw(ctx) {
+          ctx.fillStyle = '#555'; // Road color
+          ctx.fillRect(CONFIG.ROAD_MARGIN, 0, CONFIG.LANE_COUNT * CONFIG.LANE_WIDTH, CONFIG.HEIGHT);
+
+          ctx.fillStyle = '#fff';
+          for (let i = 1; i < CONFIG.LANE_COUNT; i++) {
+            for (const line of this.lines) {
+              const y = (line.y + this.yOffset) % (CONFIG.HEIGHT + CONFIG.ROAD_LINE_HEIGHT + CONFIG.ROAD_LINE_GAP) - (CONFIG.ROAD_LINE_HEIGHT + CONFIG.ROAD_LINE_GAP);
+              ctx.fillRect(CONFIG.ROAD_MARGIN + i * CONFIG.LANE_WIDTH - CONFIG.ROAD_LINE_WIDTH / 2, y, CONFIG.ROAD_LINE_WIDTH, CONFIG.ROAD_LINE_HEIGHT);
+            }
+          }
+        }
+      }
+      
+      const LEVELS = [
+          {
+              name: "Urban Dash",
+              briefing: "The city streets are busy. Watch out for slow-moving traffic.",
+              laps: 1,
+              length: 5000, // pixels
+              obstacleDensity: 0.01,
+              obstacleTypes: ['car'],
+              minObstacleSpeed: -1,
+              maxObstacleSpeed: 1,
+          },
+          {
+              name: "Highway Havoc",
+              briefing: "Things are speeding up! And what are those slicks on the road?",
+              laps: 2,
+              length: 10000,
+              obstacleDensity: 0.015,
+              obstacleTypes: ['car', 'oil'],
+              minObstacleSpeed: 0,
+              maxObstacleSpeed: 3,
+          },
+          {
+              name: "The Final Lap",
+              briefing: "This is it. The Shadow Racer is here. Beat him to the finish line to become the champion.<br>Look out for Nitro boosts!",
+              laps: 3,
+              length: 15000,
+              obstacleDensity: 0.012,
+              obstacleTypes: ['car', 'oil', 'nitro'],
+              minObstacleSpeed: 1,
+              maxObstacleSpeed: 4,
+              isBossLevel: true,
+          }
+      ];
+
+      class Game {
+        constructor() {
+          this.input = new InputHandler();
+          this.player = new Player();
+          this.road = new Road();
+          this.obstacles = [];
+          this.rival = null;
+          this.distanceTravelled = 0;
+          this.playerLaps = 0;
+          this.rivalLaps = 0;
+          this.currentLevelIndex = 0;
+          this.stateMachine = new FiniteStateMachine(new StartScreenState(this));
+          
+          window.addEventListener('keydown', e => {
+              if (this.stateMachine.currentState.onKeyPress) {
+                  this.stateMachine.currentState.onKeyPress(e.code);
+              }
+          });
+        }
+        
+        resetLevel() {
+            const level = LEVELS[this.currentLevelIndex];
+            this.player.reset();
+            this.obstacles = [];
+            this.distanceTravelled = 0;
+            this.playerLaps = 0;
+            this.rivalLaps = 0;
+            if (level.isBossLevel) {
+                this.rival = new ShadowRacer();
+            } else {
+                this.rival = null;
+            }
+        }
+
+        spawnObstacle() {
+            const level = LEVELS[this.currentLevelIndex];
+            if (Math.random() < level.obstacleDensity) {
+                const lane = Math.floor(Math.random() * CONFIG.LANE_COUNT);
+                const speed = Math.random() * (level.maxObstacleSpeed - level.minObstacleSpeed) + level.minObstacleSpeed;
+                const type = level.obstacleTypes[Math.floor(Math.random() * level.obstacleTypes.length)];
+                this.obstacles.push(new Obstacle(lane, speed, type));
+            }
+        }
+
+        update() {
+          this.stateMachine.update();
+        }
+
+        draw() {
+          ctx.clearRect(0, 0, CONFIG.WIDTH, CONFIG.HEIGHT);
+          this.road.draw(ctx);
+          this.player.draw(ctx);
+          this.obstacles.forEach(o => o.draw(ctx));
+          if (this.rival) this.rival.draw(ctx);
+        }
+
+        loop() {
+          this.update();
+          this.draw();
+          requestAnimationFrame(() => this.loop());
+        }
+      }
+
+      // --- Finite State Machine ---
+      class FiniteStateMachine {
+        constructor(initialState) {
+          this.currentState = initialState;
+          this.currentState.enter();
+        }
+        transitionTo(newState) {
+          this.currentState.exit();
+          this.currentState = newState;
+          this.currentState.enter();
+        }
+        update() {
+          this.currentState.update();
+        }
+      }
+
+      class StartScreenState {
+        constructor(game) { this.game = game; this.name = 'StartScreen'; }
+        enter() { UIManager.show(UIManager.startScreen); }
+        exit() { UIManager.hide(UIManager.startScreen); }
+        update() {}
+        onKeyPress(key) {
+          if (key === 'Enter') {
+            this.game.stateMachine.transitionTo(new LevelTransitionState(this.game));
+          }
+        }
+      }
+      
+      class LevelTransitionState {
+          constructor(game) { this.game = game; this.name = 'LevelTransition'; }
+          async enter() {
+              const level = LEVELS[this.game.currentLevelIndex];
+              this.game.resetLevel();
+              await UIManager.showLevelTransition(level.name, level.briefing);
+              if (level.isBossLevel) {
+                  this.game.stateMachine.transitionTo(new BossFightState(this.game));
+              } else {
+                  this.game.stateMachine.transitionTo(new PlayingState(this.game));
+              }
+          }
+          exit() {}
+          update() {}
+      }
+
+      class PlayingState {
+        constructor(game) { this.game = game; this.name = 'Playing'; }
+        enter() {
+            // Lane change logic
+            this.keyListener = (e) => this.onKeyPress(e.code);
+            window.addEventListener('keydown', this.keyListener);
+        }
+        exit() {
+            window.removeEventListener('keydown', this.keyListener);
+        }
+        
+        onKeyPress(key) {
+            if (key === 'ArrowLeft') {
+                this.game.player.lane = Math.max(0, this.game.player.lane - 1);
+            } else if (key === 'ArrowRight') {
+                this.game.player.lane = Math.min(CONFIG.LANE_COUNT - 1, this.game.player.lane + 1);
+            }
+        }
+
+        update() {
+          const game = this.game;
+          game.player.update(game.input);
+          game.road.update(game.player.speed);
+          
+          game.distanceTravelled += game.player.speed;
+          const level = LEVELS[game.currentLevelIndex];
+          if (game.distanceTravelled >= level.length) {
+              game.playerLaps++;
+              game.distanceTravelled = 0;
+              if (game.playerLaps >= level.laps) {
+                  game.currentLevelIndex++;
+                  if (game.currentLevelIndex >= LEVELS.length) {
+                      game.stateMachine.transitionTo(new VictoryState(game));
+                  } else {
+                      game.stateMachine.transitionTo(new LevelTransitionState(game));
+                  }
+                  return;
+              }
+          }
+
+          game.spawnObstacle();
+
+          game.obstacles.forEach((obstacle, index) => {
+            obstacle.update(-game.player.speed);
+            if (obstacle.y > CONFIG.HEIGHT) {
+              game.obstacles.splice(index, 1);
+            }
+
+            // Collision detection
+            if (
+              game.player.x < obstacle.x + obstacle.width &&
+              game.player.x + game.player.width > obstacle.x &&
+              game.player.y < obstacle.y + obstacle.height &&
+              game.player.y + game.player.height > obstacle.y
+            ) {
+                switch(obstacle.type) {
+                    case 'car':
+                    case 'barrier':
+                        game.stateMachine.transitionTo(new GameOverState(game));
+                        break;
+                    case 'oil':
+                        // Spin out effect - could be implemented
+                        game.player.speed *= 0.5;
+                        game.obstacles.splice(index, 1);
+                        break;
+                    case 'nitro':
+                        game.player.activateNitro();
+                        game.obstacles.splice(index, 1);
+                        break;
+                }
+            }
+          });
+          
+          UIManager.updateStats(game.player, game);
+        }
+      }
+      
+      class BossFightState extends PlayingState {
+          constructor(game) {
+              super(game);
+              this.name = 'BossFight';
+          }
+          
+          enter() {
+              super.enter();
+              this.game.rival = new ShadowRacer();
+          }
+
+          update() {
+              super.update(); // Runs the normal playing logic
+              const game = this.game;
+              
+              if (!game.rival) return;
+
+              game.rival.update(game.player, game.obstacles);
+              
+              // Rival lap tracking
+              // Simplified: rival completes a lap when player does, but slightly slower/faster
+              const rivalProgressRatio = (CONFIG.PLAYER_MAX_SPEED * CONFIG.RIVAL_SPEED_MULTIPLIER) / CONFIG.PLAYER_MAX_SPEED;
+              if (game.distanceTravelled === 0 && game.playerLaps > game.rivalLaps) {
+                  if (Math.random() < rivalProgressRatio) { // Chance to keep up
+                    game.rivalLaps++;
+                  }
+              }
+              
+              // Check for loss condition
+              if (game.rivalLaps >= LEVELS[game.currentLevelIndex].laps) {
+                  game.stateMachine.transitionTo(new GameOverState(game));
+              }
+          }
+      }
+
+      class GameOverState {
+        constructor(game) { this.game = game; this.name = 'GameOver'; }
+        enter() { UIManager.show(UIManager.gameOverScreen); }
+        exit() { UIManager.hide(UIManager.gameOverScreen); }
+        update() {}
+        onKeyPress(key) {
+          if (key === 'Enter') {
+            this.game.currentLevelIndex = 0; // Restart from beginning
+            this.game.stateMachine.transitionTo(new LevelTransitionState(this.game));
+          }
+        }
+      }
+
+      class VictoryState {
+        constructor(game) { this.game = game; this.name = 'Victory'; }
+        enter() { UIManager.show(UIManager.victoryScreen); }
+        exit() { UIManager.hide(UIManager.victoryScreen); }
+        update() {}
+      }
+
+      const game = new Game();
+      game.loop();
+    });
+  </script>
+</body>
+</html>
